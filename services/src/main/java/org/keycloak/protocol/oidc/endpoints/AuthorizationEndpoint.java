@@ -44,6 +44,8 @@ import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.services.ErrorPageException;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.Urls;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientPolicyManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.LoginActionsService;
 import org.keycloak.services.util.CacheControlUtil;
@@ -151,6 +153,12 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         errorResponse = checkPKCEParams();
         if (errorResponse != null) {
             return errorResponse;
+        }
+
+        try {
+            ClientPolicyManager.triggerOnAuthorizationRequest(parsedResponseType, request, redirectUri, session);
+        } catch (ClientPolicyException cpe) {
+            return redirectErrorToClient(parsedResponseMode, cpe.getError(), cpe.getErrorDetail());
         }
 
         authenticationSession = createAuthenticationSession(client, request.getState());
