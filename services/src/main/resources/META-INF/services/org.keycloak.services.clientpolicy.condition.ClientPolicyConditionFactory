@@ -1,0 +1,10 @@
+org.keycloak.services.clientpolicy.condition.impl.ClientAccessTypeConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.AuthnMethodsConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.ClientIpAddressConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.HostsConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.UsersConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.GroupsConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.UserRolesConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.ClientRolesConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.ClientScopesConditionFactory
+org.keycloak.services.clientpolicy.condition.impl.ClientRedirectUrisConditionFactory

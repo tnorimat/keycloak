@@ -1,0 +1,9 @@
+org.keycloak.services.clientpolicy.executor.impl.PKCEEnforceExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.SecureRedirectUriExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.SecureSessionsExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.ClientAuthenticationExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.SecureResponseTypeExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.SecureRequestObjectExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.SecureClientAuthenticationExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.HoKTokenEnforceExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.SecureSigningAlgorithmExecutorFactory

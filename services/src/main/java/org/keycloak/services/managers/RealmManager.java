@@ -53,6 +53,7 @@ import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.sessions.AuthenticationSessionProvider;
 import org.keycloak.storage.UserStorageProviderModel;
+import org.keycloak.services.clientpolicy.DefaultClientPolicies;
 import org.keycloak.services.clientregistration.policy.DefaultClientRegistrationPolicies;
 
 import java.util.Collections;
@@ -119,6 +120,7 @@ public class RealmManager {
         createDefaultClientScopes(realm);
         setupAuthorizationServices(realm);
         setupClientRegistrations(realm);
+        setupClientPolicies(realm);
 
         fireRealmPostCreate(realm);
 
@@ -589,6 +591,7 @@ public class RealmManager {
 
         setupAuthorizationServices(realm);
         setupClientRegistrations(realm);
+        setupClientPolicies(realm);
 
         if (rep.getKeycloakVersion() != null) {
             MigrationModelManager.migrateImport(session, realm, rep, skipUserDependent);
@@ -708,6 +711,10 @@ public class RealmManager {
 
     private void setupClientRegistrations(RealmModel realm) {
         DefaultClientRegistrationPolicies.addDefaultPolicies(realm);
+    }
+
+    private void setupClientPolicies(RealmModel realm) {
+        DefaultClientPolicies.addDefaultPolicies(realm);
     }
 
     private void fireRealmPostCreate(RealmModel realm) {
