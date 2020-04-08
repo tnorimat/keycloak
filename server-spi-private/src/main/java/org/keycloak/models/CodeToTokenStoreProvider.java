@@ -50,4 +50,12 @@ public interface CodeToTokenStoreProvider extends Provider {
      * @return context data related to OAuth2 code. It returns null if there are not context data available.
      */
     Map<String, String> remove(UUID codeId);
+
+    /**
+     * This method returns data in the store.
+     *
+     * @param codeId
+     * @return context data related to OAuth2 code. It returns null if there are not context data available.
+     */
+    Map<String, String> get(UUID codeId);
 }

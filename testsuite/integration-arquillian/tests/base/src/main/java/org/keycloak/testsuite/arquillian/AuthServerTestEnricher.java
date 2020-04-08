@@ -46,8 +46,10 @@ import org.keycloak.common.util.StringPropertyReplacer;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.services.error.KeycloakErrorHandler;
 import org.keycloak.testsuite.arquillian.annotation.UncaughtServerErrorExpected;
+import org.keycloak.testsuite.arquillian.annotation.EnableCiba;
 import org.keycloak.testsuite.arquillian.annotation.EnableVault;
 import org.keycloak.testsuite.client.KeycloakTestingClient;
+import org.keycloak.testsuite.util.CibaUtils;
 import org.keycloak.testsuite.util.LogChecker;
 import org.keycloak.testsuite.util.OAuthClient;
 import org.keycloak.testsuite.util.SqlUtils;
@@ -178,6 +180,13 @@ public class AuthServerTestEnricher {
         int httpPort = Integer.parseInt(System.getProperty("auth.server.http.port")); // property must be set
 
         return removeDefaultPorts(String.format("%s://%s:%s", "http", host, httpPort));
+    }
+
+    public static String getHttpsAuthServerContextRoot() {
+        String host = System.getProperty("auth.server.host", "localhost");
+        int httpPort = Integer.parseInt(System.getProperty("auth.server.https.port")); // property must be set
+
+        return removeDefaultPorts(String.format("%s://%s:%s", "https", host, httpPort));
     }
 
     public static String getAuthServerBrowserContextRoot() throws MalformedURLException {
@@ -532,8 +541,13 @@ public class AuthServerTestEnricher {
         TestContext testContext = new TestContext(suiteContext, event.getTestClass().getJavaClass());
         testContextProducer.set(testContext);
 
-        if (!isAuthServerRemote() && !isAuthServerQuarkus() && event.getTestClass().isAnnotationPresent(EnableVault.class)) {
-            VaultUtils.enableVault(suiteContext, event.getTestClass().getAnnotation(EnableVault.class).providerId());
+        if (!isAuthServerRemote() && !isAuthServerQuarkus()) {
+            if (event.getTestClass().isAnnotationPresent(EnableVault.class)) {
+                VaultUtils.enableVault(suiteContext, event.getTestClass().getAnnotation(EnableVault.class).providerId());
+            }
+            if (event.getTestClass().isAnnotationPresent(EnableCiba.class)) {
+                CibaUtils.enableCiba(suiteContext, event.getTestClass().getAnnotation(EnableCiba.class).providerId());
+            }
             restartAuthServer();
             testContext.reconnectAdminClient();
         }
@@ -851,8 +865,13 @@ public class AuthServerTestEnricher {
 
         removeTestRealms(testContext, adminClient);
 
-        if (!isAuthServerRemote() && event.getTestClass().isAnnotationPresent(EnableVault.class)) {
-            VaultUtils.disableVault(suiteContext, event.getTestClass().getAnnotation(EnableVault.class).providerId());
+        if (!isAuthServerRemote()) {
+            if (event.getTestClass().isAnnotationPresent(EnableVault.class)) {
+                VaultUtils.disableVault(suiteContext, event.getTestClass().getAnnotation(EnableVault.class).providerId());
+            }
+            if (event.getTestClass().isAnnotationPresent(EnableCiba.class)) {
+                CibaUtils.disableCiba(suiteContext, event.getTestClass().getAnnotation(EnableCiba.class).providerId());
+            }
             restartAuthServer();
             testContext.reconnectAdminClient();
         }

@@ -274,6 +274,10 @@ public interface RealmModel extends RoleContainerModel {
      */
     void setWebAuthnPolicyPasswordless(WebAuthnPolicy policy);
 
+    CIBAPolicy getCIBAPolicy();
+
+    void setCIBAPolicy(CIBAPolicy policy);
+
     RoleModel getRoleById(String id);
 
     @Deprecated
@@ -352,6 +356,9 @@ public interface RealmModel extends RoleContainerModel {
 
     AuthenticationFlowModel getDockerAuthenticationFlow();
     void setDockerAuthenticationFlow(AuthenticationFlowModel flow);
+
+    AuthenticationFlowModel getCIBAFlow();
+    void setCIBAFlow(AuthenticationFlowModel flow);
 
     /**
      * @deprecated Use {@link #getAuthenticationFlowsStream()  getAuthenticationFlowsStream} instead.
