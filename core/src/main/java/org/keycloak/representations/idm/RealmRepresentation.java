@@ -139,6 +139,12 @@ public class RealmRepresentation {
     protected Boolean webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister;
     protected List<String> webAuthnPolicyPasswordlessAcceptableAaguids;
 
+    // CIBA policy
+    protected String cibaBackchannelTokenDeliveryMode;
+    protected Integer cibaExpiresIn;
+    protected Integer cibaInterval;
+    protected String cibaAuthRequestedUserHint;
+
     protected List<UserRepresentation> users;
     protected List<UserRepresentation> federatedUsers;
     protected List<ScopeMappingRepresentation> scopeMappings;
@@ -180,6 +186,7 @@ public class RealmRepresentation {
     protected String resetCredentialsFlow;
     protected String clientAuthenticationFlow;
     protected String dockerAuthenticationFlow;
+    protected String cibaFlow;
 
     protected Map<String, String> attributes;
 
@@ -1155,6 +1162,38 @@ public class RealmRepresentation {
         this.webAuthnPolicyPasswordlessAcceptableAaguids = webAuthnPolicyPasswordlessAcceptableAaguids;
     }
 
+    // CIBA policy
+    public String getCibaBackchannelTokenDeliveryMode() {
+        return this.cibaBackchannelTokenDeliveryMode;
+    }
+
+    public void setCibaBackchannelTokenDeliveryMode(String cibaBackchannelTokenDeliveryMode) {
+        this.cibaBackchannelTokenDeliveryMode = cibaBackchannelTokenDeliveryMode;
+    }
+
+    public Integer getCibaExpiresIn() {
+        return cibaExpiresIn;
+    }
+
+    public void setCibaExpiresIn(Integer cibaExpiresIn) {
+        this.cibaExpiresIn = cibaExpiresIn;
+    }
+
+    public Integer getCibaInterval() {
+        return cibaInterval;
+    }
+
+    public void setCibaInterval(Integer cibaInterval) {
+        this.cibaInterval = cibaInterval;
+    }
+
+    public String getCibaAuthRequestedUserHint() {
+        return this.cibaAuthRequestedUserHint;
+    }
+
+    public void setCibaAuthRequestedUserHint(String cibaAuthRequestedUserHint) {
+        this.cibaAuthRequestedUserHint = cibaAuthRequestedUserHint;
+    }
     public String getBrowserFlow() {
         return browserFlow;
     }
@@ -1202,6 +1241,14 @@ public class RealmRepresentation {
     public RealmRepresentation setDockerAuthenticationFlow(final String dockerAuthenticationFlow) {
         this.dockerAuthenticationFlow = dockerAuthenticationFlow;
         return this;
+    }
+
+    public String getCibaFlow() {
+        return cibaFlow;
+    }
+
+    public void setCibaFlow(String cibaFlow) {
+        this.cibaFlow = cibaFlow;
     }
 
     public String getKeycloakVersion() {

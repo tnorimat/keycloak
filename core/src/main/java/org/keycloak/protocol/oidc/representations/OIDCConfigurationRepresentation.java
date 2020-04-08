@@ -142,6 +142,12 @@ public class OIDCConfigurationRepresentation {
     @JsonProperty("backchannel_logout_session_supported")
     private Boolean backchannelLogoutSessionSupported;
 
+    @JsonProperty("backchannel_token_delivery_modes_supported")
+    private List<String> backchannelTokenDeliveryModesSupported;
+
+    @JsonProperty("backchannel_authentication_endpoint")
+    private String backchannelAuthenticationEndpoint;
+
     protected Map<String, Object> otherClaims = new HashMap<String, Object>();
 
     public String getIssuer() {
@@ -434,6 +440,22 @@ public class OIDCConfigurationRepresentation {
 
     public void setBackchannelLogoutSupported(Boolean backchannelLogoutSupported) {
         this.backchannelLogoutSupported = backchannelLogoutSupported;
+    }
+
+    public List<String> getBackchannelTokenDeliveryModesSupported() {
+        return backchannelTokenDeliveryModesSupported;
+    }
+
+    public void setBackchannelTokenDeliveryModesSupported(List<String> backchannelTokenDeliveryModesSupported) {
+        this.backchannelTokenDeliveryModesSupported = backchannelTokenDeliveryModesSupported;
+    }
+
+    public String getBackchannelAuthenticationEndpoint() {
+        return backchannelAuthenticationEndpoint;
+    }
+
+    public void setBackchannelAuthenticationEndpoint(String backchannelAuthenticationEndpoint) {
+        this.backchannelAuthenticationEndpoint = backchannelAuthenticationEndpoint;
     }
 
     @JsonAnyGetter

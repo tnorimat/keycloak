@@ -118,4 +118,11 @@ public final class Constants {
      * If {@code #STORAGE_BATCH_ENABLED} is set, indicates the batch size.
      */
     public static final String STORAGE_BATCH_SIZE = "org.keycloak.storage.batch_size";
+
+    // CIBA policy default value
+    public static final String DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE = "poll";
+    public static final int DEFAULT_CIBA_POLICY_EXPIRES_IN = 120;
+    public static final int DEFAULT_CIBA_POLICY_INTERVAL = 0;
+    public static final String DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT = "login_hint";
+
 }
