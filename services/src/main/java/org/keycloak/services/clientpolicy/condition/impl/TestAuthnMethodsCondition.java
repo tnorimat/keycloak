@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.testsuite.clientpolicy.condition;
+package org.keycloak.services.clientpolicy.condition.impl;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;

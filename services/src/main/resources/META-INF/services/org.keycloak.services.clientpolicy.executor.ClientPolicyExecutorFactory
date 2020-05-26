@@ -1,0 +1,2 @@
+org.keycloak.services.clientpolicy.executor.impl.TestPKCEEnforceExecutorFactory
+org.keycloak.services.clientpolicy.executor.impl.TestClientAuthenticationExecutorFactory

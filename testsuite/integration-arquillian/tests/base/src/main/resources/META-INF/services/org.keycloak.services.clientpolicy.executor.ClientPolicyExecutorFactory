@@ -1,2 +1,0 @@
-org.keycloak.testsuite.clientpolicy.executor.TestPKCEEnforceExecutorFactory
-org.keycloak.testsuite.clientpolicy.executor.TestClientAuthenticationExecutorFactory

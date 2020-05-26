@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.testsuite.clientpolicy.executor;
+package org.keycloak.services.clientpolicy.executor.impl;
 
 import java.util.List;
 

@@ -15,9 +15,7 @@ import java.util.function.Consumer;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.hamcrest.Matchers;
 import org.jboss.logging.Logger;
 import org.junit.After;
@@ -55,16 +53,16 @@ import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyCondition;
+import org.keycloak.services.clientpolicy.condition.impl.TestAuthnMethodsConditionFactory;
+import org.keycloak.services.clientpolicy.condition.impl.TestClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutor;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.impl.TestClientAuthenticationExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.impl.TestPKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyProviderFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
-import org.keycloak.testsuite.clientpolicy.condition.TestAuthnMethodsConditionFactory;
-import org.keycloak.testsuite.clientpolicy.condition.TestClientRolesConditionFactory;
-import org.keycloak.testsuite.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
-import org.keycloak.testsuite.clientpolicy.executor.TestPKCEEnforceExecutorFactory;
 import org.keycloak.testsuite.util.OAuthClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
