@@ -38,9 +38,8 @@ import org.keycloak.protocol.oidc.utils.OAuth2Code;
 import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 import org.keycloak.services.clientpolicy.executor.impl.AbstractClientPoicyExecutor;
 
 public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
@@ -54,26 +53,9 @@ public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
         super(session, componentModel);
     }
 
-    @Override
-    public boolean isExecutedOnEvent(String event) {
-        switch (event) {
-            case ClientPolicyEvent.DYNAMIC_REGISTER:
-            case ClientPolicyEvent.DYNAMIC_UPDATE:
-            case ClientPolicyEvent.ADMIN_REGISTER:
-            case ClientPolicyEvent.ADMIN_UPDATE:
-            case ClientPolicyEvent.AUTHORIZATION_REQUEST:
-            case ClientPolicyEvent.TOKEN_REQUEST:
-                return true;
-        }
-        return false;
-    }
-
-    protected boolean isAugmentRequired() {
-        return Boolean.valueOf(componentModel.getConfig().getFirst(ClientPolicyExecutorFactory.IS_AUGMENT));
-    }
-
     protected void augment(ClientRepresentation rep) {
-        OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).setPkceCodeChallengeMethod(OAuth2Constants.PKCE_METHOD_S256);
+        if (Boolean.valueOf(componentModel.getConfig().getFirst(ClientPolicyExecutorProviderFactory.IS_AUGMENT)))
+            OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).setPkceCodeChallengeMethod(OAuth2Constants.PKCE_METHOD_S256);
     }
 
     protected void validate(ClientRepresentation rep) throws ClientPolicyException {

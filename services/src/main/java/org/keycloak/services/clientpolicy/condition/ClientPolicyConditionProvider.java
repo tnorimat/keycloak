@@ -25,6 +25,8 @@ import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.provider.Provider;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientpolicy.ClientPolicyEvent;
+import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientregistration.ClientRegistrationContext;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.resources.admin.AdminAuth;
@@ -35,7 +37,7 @@ import org.keycloak.services.resources.admin.AdminAuth;
  * It is sufficient for the implementer of this condition to implement methods in which they are interested
  * and {@link isEvaluatedOnEvent} method.
  */
-public interface ClientPolicyCondition extends Provider {
+public interface ClientPolicyConditionProvider extends Provider {
 
     @Override
     default void close() {}
@@ -49,59 +51,16 @@ public interface ClientPolicyCondition extends Provider {
      * @param event defined in {@link ClientPolicyEvent}
      * @return true if this condition is evaluated on the event.
      */
-    default boolean isEvaluatedOnEvent(String event) {return true;}
+    default boolean isEvaluatedOnEvent(ClientPolicyEvent event) {return true;}
 
     /**
      * returns true if the client satisfies this condition
-     * on Dynamic Registration Endpoint access for creating client.
+     * on the client registration/update by Dynamic Client Registration and Admin REST API.
      *
-     * @param context
-     * @param authType
+     * @param context - the context in the client registration/update by Dynamic Client Registration or Admin REST API.
      * @return true if the client satisfies this condition.
      */
-    default boolean isSatisfiedOnDynamicClientRegister(
-            ClientRegistrationContext context,
-            RegistrationAuth authType) {return true;};
-
-    /**
-     * returns true if the client satisfies this condition
-     * on Dynamic Registration Endpoint access for updating client.
-     *
-     * @param context
-     * @param authType
-     * @param client - current client's model
-     * @return true if the client satisfies this condition.
-     */
-    default boolean isSatisfiedOnDynamicClientUpdate(
-            ClientRegistrationContext context,
-            RegistrationAuth authType,
-            ClientModel client) {return true;};
-
-    /**
-     * returns true if the client satisfies this condition
-     * on Admin REST API Registration access for creating client.
-     *
-     * @param rep - client's representation to be created
-     * @param admin - authenticated administrator's info
-     * @return true if the client satisfies this condition.
-     */
-    default boolean isSatisfiedOnClientRegister(
-            ClientRepresentation rep,
-            AdminAuth admin) {return true;};
- 
-    /**
-     * returns true if the client satisfies this condition
-     * on Admin REST API Registration access for updating client.
-     *
-     * @param rep - client's representation to be updated
-     * @param admin - authenticated administrator's info
-     * @param client - current client's model
-     * @return true if the client satisfies this condition.
-     */
-    default boolean isSatisfiedOnClientUpdate(
-            ClientRepresentation rep,
-            AdminAuth admin,
-            ClientModel client) {return true;};
+    default boolean isSatisfiedOnClientUpdate(ClientUpdateContext context) {return true;}
 
     /**
      * returns true if the client satisfies this condition

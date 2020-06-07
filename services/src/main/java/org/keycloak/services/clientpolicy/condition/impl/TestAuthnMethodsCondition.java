@@ -24,12 +24,13 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyCondition;
+import org.keycloak.services.clientpolicy.ClientUpdateContext;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientregistration.ClientRegistrationContext;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.resources.admin.AdminAuth;
 
-public class TestAuthnMethodsCondition implements ClientPolicyCondition {
+public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider {
 
     private static final Logger logger = Logger.getLogger(TestAuthnMethodsCondition.class);
 
@@ -42,50 +43,31 @@ public class TestAuthnMethodsCondition implements ClientPolicyCondition {
     }
 
     @Override
-    public boolean isEvaluatedOnEvent(String event) {
-        switch (event) {
-            case ClientPolicyEvent.DYNAMIC_REGISTER:
-            case ClientPolicyEvent.DYNAMIC_UPDATE:
-            case ClientPolicyEvent.ADMIN_REGISTER:
-            case ClientPolicyEvent.ADMIN_UPDATE:
-                return true;
+    public boolean isSatisfiedOnClientUpdate(ClientUpdateContext context) {
+        switch (context.getEvent()) {
+        case DYNAMIC_REGISTER:
+        case DYNAMIC_UPDATE:
+            return context.getDynamicRegistrationAuth() == null ? false : isAuthMethodMatched(context.getDynamicRegistrationAuth().name());
+        case ADMIN_REGISTER:
+        case ADMIN_UPDATE:
+            return isAuthMethodMatched(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API);
+        default:
+            return false;
         }
-        return false;
     }
 
-    // on Dynamic Registration Endpoint access for creating client
     @Override
-    public boolean isSatisfiedOnDynamicClientRegister(
-            ClientRegistrationContext context,
-            RegistrationAuth authType) {
-        return authType == null ? false : isAuthMethodMatched(authType.name());
+    public boolean isEvaluatedOnEvent(ClientPolicyEvent event) {
+        switch (event) {
+            case DYNAMIC_REGISTER:
+            case DYNAMIC_UPDATE:
+            case ADMIN_REGISTER:
+            case ADMIN_UPDATE:
+                return true;
+            default:
+                return false;
+        }
     }
-
-    // on Dynamic Registration Endpoint access for updating client
-    @Override
-    public boolean isSatisfiedOnDynamicClientUpdate(
-            ClientRegistrationContext context,
-            RegistrationAuth authType,
-            ClientModel client) {
-        return authType == null ? false : isAuthMethodMatched(authType.name());
-    }
-
-    // on Admin REST API Registration access for creating client
-    @Override
-    public boolean isSatisfiedOnClientRegister(
-            ClientRepresentation rep,
-            AdminAuth admin) {
-        return isAuthMethodMatched(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API);
-    };
-
-    // on Admin REST API Registration access for updating client
-    @Override
-    public boolean isSatisfiedOnClientUpdate(
-            ClientRepresentation rep,
-            AdminAuth admin,
-            ClientModel client) {
-        return isAuthMethodMatched(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API);
-    };
 
     private boolean isAuthMethodMatched(String authMethod) {
         if (authMethod == null) return false;

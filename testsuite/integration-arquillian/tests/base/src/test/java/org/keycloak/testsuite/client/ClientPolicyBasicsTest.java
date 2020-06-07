@@ -33,6 +33,7 @@ import org.keycloak.authentication.authenticators.client.X509ClientAuthenticator
 import org.keycloak.client.registration.Auth;
 import org.keycloak.client.registration.ClientRegistration;
 import org.keycloak.client.registration.ClientRegistrationException;
+import org.keycloak.common.Profile;
 import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.events.Details;
@@ -52,11 +53,11 @@ import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyCondition;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.impl.TestAuthnMethodsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.impl.TestClientRolesConditionFactory;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutor;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 import org.keycloak.services.clientpolicy.executor.impl.TestClientAuthenticationExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.impl.TestPKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyProviderFactory;
@@ -86,17 +87,66 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         reg = ClientRegistration.create().url(suiteContext.getAuthServerInfo().getContextRoot() + "/auth", REALM_NAME).build();
         ClientInitialAccessPresentation token = adminClient.realm(REALM_NAME).clientInitialAccess().create(new ClientInitialAccessCreatePresentation(0, 10));
         reg.auth(Auth.token(token));
+
+        System.setProperty("keycloak.profile", "preview");
+        Profile.init();
+
     }
 
     @After
     public void after() throws Exception {
         reg.close();
+
+        System.getProperties().remove("keycloak.profile");
+        Profile.init();
     }
 
     @Override
     public void addTestRealms(List<RealmRepresentation> testRealms) {
         RealmRepresentation realm = loadJson(getClass().getResourceAsStream("/testrealm.json"), RealmRepresentation.class);
         testRealms.add(realm);
+    }
+
+    @Test
+    public void testPurgePreviewProfile() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createExecutor("TestPKCEEnforceExecutor", TestPKCEEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setExecutorAugmentActivate(provider);
+        });
+        registerExecutor("TestPKCEEnforceExecutor", policyName);
+        logger.info("... Registered Executor : TestPKCEEnforceExecutor");
+
+        String clientId = "Zahlungs-App";
+        String clientSecret = "secret";
+        String cid = createClientByAdmin(clientId, (ClientRepresentation clientRep) -> {
+            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role").toArray(new String[1]));
+            clientRep.setSecret(clientSecret);
+        });
+
+        try {
+            successfulLoginAndLogout(clientId, clientSecret);
+ 
+            createCondition("TestClientRolesCondition", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+                setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role")));
+            });
+            registerCondition("TestClientRolesCondition", policyName);
+            logger.info("... Registered Condition : TestClientRolesCondition");
+
+            failLoginByNotFollowingPKCE(clientId);
+
+            System.getProperties().remove("keycloak.profile");
+            Profile.init();
+
+            successfulLoginAndLogout(clientId, clientSecret);
+
+        } finally {
+            System.setProperty("keycloak.profile", "preview");
+            Profile.init();
+            deleteClientByAdmin(cid);
+        }
     }
 
     @Test
@@ -272,7 +322,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         events.expect(EventType.CLIENT_INFO).client(clientId).user(Matchers.isEmptyOrNullString()).assertEvent();
 
         updateClientByAdmin(clientId, (ClientRepresentation clientRep) -> {
-            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role").toArray());
+            clientRep.setDefaultRoles(Arrays.asList("sample-client-role").toArray(new String[1]));
         });
 
         oauth.clientId(response.getClientId());
@@ -335,7 +385,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             events.expect(EventType.CLIENT_REGISTER).client(clientId).user(Matchers.isEmptyOrNullString()).assertEvent();
             events.expect(EventType.CLIENT_INFO).client(clientId).user(Matchers.isEmptyOrNullString()).assertEvent();
             updateClientByAdmin(clientId, (ClientRepresentation cr) -> {
-                cr.setDefaultRoles((String[]) Arrays.asList("sample-client-role").toArray());
+                cr.setDefaultRoles((String[]) Arrays.asList("sample-client-role").toArray(new String[1]));
             });
 
             successfulLoginAndLogout(clientId, clientRep.getClientSecret());
@@ -368,7 +418,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         String clientId = "Zahlungs-App";
         String clientSecret = "secret";
         String cid = createClientByAdmin(clientId, (ClientRepresentation clientRep) -> {
-            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role").toArray());
+            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role").toArray(new String[1]));
             clientRep.setSecret(clientSecret);
         });
 
@@ -505,7 +555,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         String clientAlphaId = "Alpha-App";
         String clientAlphaSecret = "secretAlpha";
         String cAlphaId = createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
-            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role-alpha").toArray());
+            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role-alpha").toArray(new String[1]));
             clientRep.setSecret(clientAlphaSecret);
             clientRep.setClientAuthenticatorType(JWTClientSecretAuthenticator.PROVIDER_ID);
         });
@@ -513,7 +563,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         String clientBetaId = "Beta-App";
         String clientBetaSecret = "secretBeta";
         String cBetaId = createClientByAdmin(clientBetaId, (ClientRepresentation clientRep) -> {
-            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role-beta").toArray());
+            clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role-beta").toArray(new String[1]));
             clientRep.setSecret(clientBetaSecret);
         });
 
@@ -678,7 +728,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private String createCondition(String name, String providerId, String subType, Consumer<ComponentRepresentation> op) {
-        ComponentRepresentation component = createComponentInstance(name, providerId, ClientPolicyCondition.class.getName(), subType);
+        ComponentRepresentation component = createComponentInstance(name, providerId, ClientPolicyConditionProvider.class.getName(), subType);
         op.accept(component);
         return createComponent(component);
     }
@@ -694,7 +744,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private ComponentRepresentation getCondition(String name) {
-        return getComponent(name, ClientPolicyCondition.class.getName());
+        return getComponent(name, ClientPolicyConditionProvider.class.getName());
     }
 
     private void updateCondition(String name, Consumer<ComponentRepresentation> op) {
@@ -715,7 +765,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private String createExecutor(String name, String providerId, String subType, Consumer<ComponentRepresentation> op) {
-        ComponentRepresentation component = createComponentInstance(name, providerId, ClientPolicyExecutor.class.getName(), subType);
+        ComponentRepresentation component = createComponentInstance(name, providerId, ClientPolicyExecutorProvider.class.getName(), subType);
         op.accept(component);
         return createComponent(component);
     }
@@ -731,7 +781,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private ComponentRepresentation getExecutor(String name) {
-        return getComponent(name, ClientPolicyExecutor.class.getName());
+        return getComponent(name, ClientPolicyExecutorProvider.class.getName());
     }
 
     private void updateExecutor(String name, Consumer<ComponentRepresentation> op) {
@@ -787,7 +837,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         op.accept(clientRep);
         Response resp = adminClient.realm(REALM_NAME).clients().create(clientRep);
         if (resp.getStatus() == Response.Status.BAD_REQUEST.getStatusCode()) {
-            throw new ClientPolicyException(Errors.INVALID_REGISTRATION);
+            throw new ClientPolicyException(Errors.INVALID_REGISTRATION, "registration error by admin");
         }
         resp.close();
         assertEquals(Response.Status.CREATED.getStatusCode(), resp.getStatus());
@@ -846,11 +896,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
-        provider.getConfig().putSingle(ClientPolicyExecutorFactory.IS_AUGMENT, Boolean.TRUE.toString());
+        provider.getConfig().putSingle(ClientPolicyExecutorProviderFactory.IS_AUGMENT, Boolean.TRUE.toString());
     }
 
     private void setExecutorAugmentDeactivate(ComponentRepresentation provider) {
-        provider.getConfig().putSingle(ClientPolicyExecutorFactory.IS_AUGMENT, Boolean.FALSE.toString());
+        provider.getConfig().putSingle(ClientPolicyExecutorProviderFactory.IS_AUGMENT, Boolean.FALSE.toString());
     }
 
     private void setExecutorAcceptedClientAuthMethods(ComponentRepresentation provider, List<String> acceptedClientAuthMethods) {

@@ -38,6 +38,8 @@ import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.DynamicClientRegisterContext;
+import org.keycloak.services.clientpolicy.impl.DynamicClientUpdateContext;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyException;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyManager;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
@@ -151,7 +153,8 @@ public class ClientRegistrationAuth {
         }
 
         try {
-            ClientPolicyManager.triggerBeforeRegister(context, registrationAuth);
+            ClientPolicyManager.triggerBeforeClientUpdate(context.getSession(), new DynamicClientRegisterContext(context,registrationAuth));
+            ClientRegistrationPolicyManager.triggerBeforeRegister(context, registrationAuth);
         } catch (ClientRegistrationPolicyException | ClientPolicyException crpe) {
             throw forbidden(crpe.getMessage());
         }
@@ -212,7 +215,8 @@ public class ClientRegistrationAuth {
         RegistrationAuth regAuth = requireUpdateAuth(client);
 
         try {
-            ClientPolicyManager.triggerBeforeUpdate(context, regAuth, client);
+            ClientPolicyManager.triggerBeforeClientUpdate(context.getSession(), new DynamicClientUpdateContext(context, regAuth, client));
+            ClientRegistrationPolicyManager.triggerBeforeUpdate(context, regAuth, client);
         } catch (ClientRegistrationPolicyException | ClientPolicyException crpe) {
             throw forbidden(crpe.getMessage());
         }

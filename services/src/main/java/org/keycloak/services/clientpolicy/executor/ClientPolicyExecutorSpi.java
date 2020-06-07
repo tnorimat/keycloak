@@ -35,12 +35,12 @@ public class ClientPolicyExecutorSpi implements Spi {
 
     @Override
     public Class<? extends Provider> getProviderClass() {
-        return ClientPolicyExecutor.class;
+        return ClientPolicyExecutorProvider.class;
     }
 
     @Override
     public Class<? extends ProviderFactory> getProviderFactoryClass() {
-        return ClientPolicyExecutorFactory.class;
+        return ClientPolicyExecutorProviderFactory.class;
     }
 
 }

@@ -17,18 +17,18 @@
 
 package org.keycloak.services.clientpolicy;
 
-public interface ClientPolicyEvent {
+public enum ClientPolicyEvent {
 
-    String DYNAMIC_REGISTER = "DynamicRegister";
-    String DYNAMIC_UPDATE = "DynamicUpdate";
-    String ADMIN_REGISTER = "AdminRegister";
-    String ADMIN_UPDATE = "AdminUpdate";
-    String AUTHORIZATION_REQUEST = "AuthorizationRequest";
-    String TOKEN_REQUEST = "TokenRequest";
-    String TOKEN_REFRESH = "TokenRefresh";
-    String TOKEN_REVOKE = "TokenRevoke";
-    String TOKEN_INTROSPECT = "TokenIntrospect";
-    String USERINFO_REQUEST = "UserInfoRequest";
-    String LOGOUT_REQUEST = "LogoutRequest";
+    DYNAMIC_REGISTER,
+    DYNAMIC_UPDATE,
+    ADMIN_REGISTER,
+    ADMIN_UPDATE,
+    AUTHORIZATION_REQUEST,
+    TOKEN_REQUEST,
+    TOKEN_REFRESH,
+    TOKEN_REVOKE,
+    TOKEN_INTROSPECT,
+    USERINFO_REQUEST,
+    LOGOUT_REQUEST
 
 }

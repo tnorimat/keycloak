@@ -26,10 +26,10 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutor;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 
-public class TestClientAuthenticationExecutorFactory implements ClientPolicyExecutorFactory {
+public class TestClientAuthenticationExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
     public static final String PROVIDER_ID = "test-client-authn-executor";
 
@@ -39,12 +39,12 @@ public class TestClientAuthenticationExecutorFactory implements ClientPolicyExec
     private static final ProviderConfigProperty CLIENTAUTHNS_PROPERTY = new ProviderConfigProperty(
             CLIENT_AUTHNS, null, null, ProviderConfigProperty.MULTIVALUED_STRING_TYPE, null);
     private static final ProviderConfigProperty CLIENTAUTHNS_IS_AUGMENT_PROPERTY = new ProviderConfigProperty(
-            ClientPolicyExecutorFactory.IS_AUGMENT, null, null, ProviderConfigProperty.BOOLEAN_TYPE, false);
+            ClientPolicyExecutorProviderFactory.IS_AUGMENT, null, null, ProviderConfigProperty.BOOLEAN_TYPE, false);
     private static final ProviderConfigProperty CLIENTAUTHNS_AUGMENT = new ProviderConfigProperty(
             CLIENT_AUTHNS_AUGMENT, null, null, ProviderConfigProperty.STRING_TYPE, JWTClientAuthenticator.PROVIDER_ID);
 
     @Override
-    public ClientPolicyExecutor create(KeycloakSession session, ComponentModel model) {
+    public ClientPolicyExecutorProvider create(KeycloakSession session, ComponentModel model) {
         return new TestClientAuthenticationExecutor(session, model);
     }
 
@@ -75,8 +75,4 @@ public class TestClientAuthenticationExecutorFactory implements ClientPolicyExec
         return Arrays.asList(CLIENTAUTHNS_PROPERTY, CLIENTAUTHNS_IS_AUGMENT_PROPERTY, CLIENTAUTHNS_AUGMENT);
     }
 
-    @Override
-    public List<ProviderConfigProperty> getConfigProperties(KeycloakSession session) {
-        return Arrays.asList(CLIENTAUTHNS_PROPERTY, CLIENTAUTHNS_IS_AUGMENT_PROPERTY, CLIENTAUTHNS_AUGMENT);
-    }
 }

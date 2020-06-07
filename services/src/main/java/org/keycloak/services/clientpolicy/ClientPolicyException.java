@@ -18,21 +18,20 @@
 package org.keycloak.services.clientpolicy;
 
 public class ClientPolicyException extends Exception {
+
     private String error;
-    private String error_detail;
+    private String errorDetail;
 
-    public ClientPolicyException(String message) {
-        super(message);
-    }
-
-    public ClientPolicyException(String message, Throwable throwable) {
-        super(message, throwable);
-    }
-
-    public ClientPolicyException(String error, String error_detail) {
+    public ClientPolicyException(String error, String errorDetail) {
         super(error);
         setError(error);
-        setErrorDetail(error_detail);
+        setErrorDetail(errorDetail);
+    }
+
+    public ClientPolicyException(String error, String errorDetail, Throwable throwable) {
+        super(throwable);
+        setError(error);
+        setErrorDetail(errorDetail);
     }
 
     public String getError() {
@@ -44,12 +43,20 @@ public class ClientPolicyException extends Exception {
     }
 
     public String getErrorDetail() {
-        return error_detail;
+        return errorDetail;
     }
 
-    public void setErrorDetail(String error_detail) {
-        this.error_detail = error_detail;
+    public void setErrorDetail(String errorDetail) {
+        this.errorDetail = errorDetail;
     }
 
+    /**
+     * Since ClientPolicyException is used to notify the event so that it needs not to have stack trace.
+     * @return always null
+     */
+    @Override
+    public Throwable fillInStackTrace() {
+        return null;
+    }
 
 }

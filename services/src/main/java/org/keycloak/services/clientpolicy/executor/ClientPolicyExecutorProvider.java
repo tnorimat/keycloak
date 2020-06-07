@@ -26,6 +26,7 @@ import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.provider.Provider;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientregistration.ClientRegistrationContext;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
@@ -37,73 +38,19 @@ import org.keycloak.services.resources.admin.AdminAuth;
  * It is sufficient for the implementer of this executor to implement methods in which they are interested
  * and {@link isEvaluatedOnEvent} method.
  */
-public interface ClientPolicyExecutor extends Provider {
+public interface ClientPolicyExecutorProvider extends Provider {
 
     @Override
     default void close() {
     }
 
     /**
-     * returns true if this executor is executed against the client.
-     * A executor can be implemented to be executed on some events while not on others.
-     * On the event specified as the parameter, this executor is skipped if this method returns false.
-     *
-     * @param event defined in {@link ClientPolicyEvent}
-     * @return true if this executor is executed on the event.
-     */
-    default boolean isExecutedOnEvent(String event) {return true;}
-
-    /**
      * execute actions against the client
-     * on Dynamic Registration Endpoint access for creating client.
+     * on the client registration/update by Dynamic Client Registration and Admin REST API.
      *
-     * @param context
-     * @param authType
-     * @throws {@link ClientPolicyException} - if something wrong happens when execution actions
+     * @param context - the context in the client registration/update by Dynamic Client Registration or Admin REST API.
      */
-    default void executeOnDynamicClientRegister(
-            ClientRegistrationContext context,
-            RegistrationAuth authType)  throws ClientPolicyException {}
-
-    /**
-     * execute actions against the client
-     * on Dynamic Registration Endpoint access for updating client.
-     *
-     * @param context
-     * @param authType
-     * @param client - current client's model
-     * @throws {@link ClientPolicyException} - if something wrong happens when execution actions
-     */
-    default void executeOnDynamicClientUpdate(
-            ClientRegistrationContext context,
-            RegistrationAuth authType,
-            ClientModel client)  throws ClientPolicyException {}
-
-    /**
-     * execute actions against the client
-     * on Admin REST API Registration access for creating client.
-     *
-     * @param rep - client's representation to be created
-     * @param admin - authenticated administrator's info
-     * @throws {@link ClientPolicyException} - if something wrong happens when execution actions
-     */
-    default void executeOnClientRegister(
-            ClientRepresentation rep,
-            AdminAuth admin) throws ClientPolicyException {};
-
-    /**
-     * execute actions against the client
-     * on Admin REST API Registration access for updating client.
-     *
-     * @param rep - client's representation to be updated
-     * @param admin - authenticated administrator's info
-     * @param client - current client's model
-     * @throws {@link ClientPolicyException} - if something wrong happens when execution actions
-     */
-    default void executeOnClientUpdate(
-            ClientRepresentation rep,
-            AdminAuth admin,
-            ClientModel client) throws ClientPolicyException {};
+    default void executeOnClientUpdate(ClientUpdateContext context) throws ClientPolicyException {}
 
     /**
      * execute actions against the client

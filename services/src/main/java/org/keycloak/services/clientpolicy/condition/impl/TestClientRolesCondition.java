@@ -30,9 +30,9 @@ import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyCondition;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 
-public class TestClientRolesCondition implements ClientPolicyCondition {
+public class TestClientRolesCondition implements ClientPolicyConditionProvider {
 
     private static final Logger logger = Logger.getLogger(TestClientRolesCondition.class);
 
@@ -45,18 +45,20 @@ public class TestClientRolesCondition implements ClientPolicyCondition {
     }
 
     @Override
-    public boolean isEvaluatedOnEvent(String event) {
+    public boolean isEvaluatedOnEvent(ClientPolicyEvent event) {
         switch (event) {
-            case ClientPolicyEvent.AUTHORIZATION_REQUEST:
-            case ClientPolicyEvent.TOKEN_REQUEST:
-            case ClientPolicyEvent.TOKEN_REFRESH:
-            case ClientPolicyEvent.TOKEN_REVOKE:
-            case ClientPolicyEvent.TOKEN_INTROSPECT:
-            case ClientPolicyEvent.USERINFO_REQUEST:
-            case ClientPolicyEvent.LOGOUT_REQUEST:
+            case AUTHORIZATION_REQUEST:
+            case TOKEN_REQUEST:
+            case TOKEN_REFRESH:
+            case TOKEN_REVOKE:
+            case TOKEN_INTROSPECT:
+            case USERINFO_REQUEST:
+            case LOGOUT_REQUEST:
                 return true;
+            default:
+                return false;
         }
-        return false;
+
     }
 
     // on Authorization Endpoint access for authorization request

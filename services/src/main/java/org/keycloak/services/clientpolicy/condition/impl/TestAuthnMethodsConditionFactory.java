@@ -26,11 +26,11 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyCondition;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionFactory;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProviderFactory;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 
-public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionFactory {
+public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionProviderFactory {
 
     public static final String PROVIDER_ID = "test-authnmethods-condition";
 
@@ -51,7 +51,7 @@ public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionFa
     }
 
     @Override
-    public ClientPolicyCondition create(KeycloakSession session, ComponentModel model) {
+    public ClientPolicyConditionProvider create(KeycloakSession session, ComponentModel model) {
         return new TestAuthnMethodsCondition(session, model);
     }
  
@@ -79,11 +79,6 @@ public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionFa
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return configProperties;
-    }
-
-    @Override
-    public List<ProviderConfigProperty> getConfigProperties(KeycloakSession session) {
         return configProperties;
     }
 

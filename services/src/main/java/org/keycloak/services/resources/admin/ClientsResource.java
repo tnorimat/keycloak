@@ -36,6 +36,7 @@ import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.ForbiddenException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.AdminClientRegisterContext;
 import org.keycloak.services.managers.ClientManager;
 import org.keycloak.services.managers.RealmManager;
 import org.keycloak.services.resources.admin.permissions.AdminPermissionEvaluator;
@@ -189,7 +190,7 @@ public class ClientsResource {
         }
 
         try {
-            ClientPolicyManager.triggerBeforeRegisterByAdmin(session, rep, auth.adminAuth());
+            ClientPolicyManager.triggerBeforeClientUpdate(session, new AdminClientRegisterContext(rep, auth.adminAuth()));
         } catch (ClientPolicyException cpe) {
             throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }

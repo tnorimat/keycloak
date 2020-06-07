@@ -15,17 +15,9 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.executor;
-
-import java.util.List;
+package org.keycloak.services.clientpolicy.condition;
 
 import org.keycloak.component.ComponentFactory;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.provider.ProviderConfigProperty;
 
-public interface ClientPolicyExecutorFactory extends ComponentFactory<ClientPolicyExecutor, ClientPolicyExecutor> {
-
-    public static final String IS_AUGMENT = "is-augment";
-
-    List<ProviderConfigProperty> getConfigProperties(KeycloakSession session);
+public interface ClientPolicyConditionProviderFactory extends ComponentFactory<ClientPolicyConditionProvider, ClientPolicyConditionProvider> { 
 }

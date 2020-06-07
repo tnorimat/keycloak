@@ -25,10 +25,10 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyCondition;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionFactory;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProviderFactory;
 
-public class TestClientRolesConditionFactory implements ClientPolicyConditionFactory {
+public class TestClientRolesConditionFactory implements ClientPolicyConditionProviderFactory {
 
     public static final String PROVIDER_ID = "test-clientroles-condition";
     public static final String ROLES = "roles";
@@ -42,7 +42,7 @@ public class TestClientRolesConditionFactory implements ClientPolicyConditionFac
     }
 
     @Override
-    public ClientPolicyCondition create(KeycloakSession session, ComponentModel model) {
+    public ClientPolicyConditionProvider create(KeycloakSession session, ComponentModel model) {
         return new TestClientRolesCondition(session, model);
 
     }
@@ -74,8 +74,4 @@ public class TestClientRolesConditionFactory implements ClientPolicyConditionFac
         return configProperties;
     }
 
-    @Override
-    public List<ProviderConfigProperty> getConfigProperties(KeycloakSession session) {
-        return configProperties;
-    }
 }

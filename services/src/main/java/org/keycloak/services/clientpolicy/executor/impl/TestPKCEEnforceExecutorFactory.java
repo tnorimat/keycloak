@@ -25,18 +25,18 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutor;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 
-public class TestPKCEEnforceExecutorFactory implements ClientPolicyExecutorFactory {
+public class TestPKCEEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
 
     public static final String PROVIDER_ID = "test-pkce-enforce-executor";
 
     private static final ProviderConfigProperty PKCE_IS_AUGMENT_PROPERTY = new ProviderConfigProperty(
-             ClientPolicyExecutorFactory.IS_AUGMENT, null, null, ProviderConfigProperty.BOOLEAN_TYPE, false);
+             ClientPolicyExecutorProviderFactory.IS_AUGMENT, null, null, ProviderConfigProperty.BOOLEAN_TYPE, false);
 
     @Override
-    public ClientPolicyExecutor create(KeycloakSession session, ComponentModel model) {
+    public ClientPolicyExecutorProvider create(KeycloakSession session, ComponentModel model) {
         return new TestPKCEEnforceExecutor(session, model);
     }
 
@@ -64,11 +64,6 @@ public class TestPKCEEnforceExecutorFactory implements ClientPolicyExecutorFacto
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return Arrays.asList(PKCE_IS_AUGMENT_PROPERTY);
-    }
-
-    @Override
-    public List<ProviderConfigProperty> getConfigProperties(KeycloakSession session) {
         return Arrays.asList(PKCE_IS_AUGMENT_PROPERTY);
     }
 

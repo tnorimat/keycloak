@@ -20,6 +20,8 @@ package org.keycloak.services.clientpolicy;
 import java.util.List;
 
 import org.keycloak.provider.Provider;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 
 /**
  * Provides Client Policy which accommodates several Conditions and Executors.
@@ -27,16 +29,26 @@ import org.keycloak.provider.Provider;
 public interface ClientPolicyProvider extends Provider {
 
     /**
-     * returns the list of condition's id which this provider accommodates.
+     * returns the list of conditions which this provider accommodates.
      *
-     * @return list of condition's id
+     * @return list of conditions
      */
-    List<String> getConditionIds();
+    List<ClientPolicyConditionProvider> getConditions();
 
     /**
-     * returns the list of executor's id which this provider accommodates.
-     *
-     * @return list of executor's's id
+     * returns the list of conditions which this provider accommodates
+     * and can be evaluated in its nature on the specified event.
+     * 
+     * @param event
+     * @return list of conditions
      */
-    List<String> getExecutorIds();
+    List<ClientPolicyConditionProvider> getConditions(ClientPolicyEvent event);
+
+    /**
+     * returns the list of executors which this provider accommodates.
+     *
+     * @return list of executors
+     */
+    List<ClientPolicyExecutorProvider> getExecutors();
+
 }

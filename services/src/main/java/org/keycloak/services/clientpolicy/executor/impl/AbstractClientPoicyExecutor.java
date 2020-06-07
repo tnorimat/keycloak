@@ -23,7 +23,8 @@ import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutor;
+import org.keycloak.services.clientpolicy.ClientUpdateContext;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientregistration.ClientRegistrationContext;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.resources.admin.AdminAuth;
@@ -32,7 +33,7 @@ import org.keycloak.services.resources.admin.AdminAuth;
  * Executor can override the client settings to enforce some actions.
  * This feature can be activated or deactivated.
  */
-public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecutor {
+public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecutorProvider {
 
     protected static final Logger logger = Logger.getLogger(AbstractClientPoicyExecutor.class);
 
@@ -44,50 +45,23 @@ public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecuto
         this.componentModel = componentModel;
     }
 
-    // on Dynamic Registration Endpoint access for creating client
     @Override
-    public void executeOnDynamicClientRegister(
-            ClientRegistrationContext context,
-            RegistrationAuth authType) throws ClientPolicyException {
-        if(isAugmentRequired()) augment(context.getClient());
-        validate(context.getClient());
+    public void executeOnClientUpdate(ClientUpdateContext context) throws ClientPolicyException {
+        switch (context.getEvent()) {
+        case DYNAMIC_REGISTER:
+        case DYNAMIC_UPDATE:
+            augment(context.getDynamicClientRegistrationContext().getClient());
+            validate(context.getDynamicClientRegistrationContext().getClient());
+            break;
+        case ADMIN_REGISTER:
+        case ADMIN_UPDATE:
+            augment(context.getProposedClientRepresentation());
+            validate(context.getProposedClientRepresentation());
+            break;
+        default:
+            return;
+        }
     }
-
-    // on Dynamic Registration Endpoint access for updating client
-    @Override
-    public void executeOnDynamicClientUpdate(
-            ClientRegistrationContext context,
-            RegistrationAuth authType,
-            ClientModel client)  throws ClientPolicyException {
-        if(isAugmentRequired()) augment(context.getClient());
-        validate(context.getClient());
-    }
- 
-    // on Admin REST API Registration access for creating client
-    @Override
-    public void executeOnClientRegister(
-            ClientRepresentation rep,
-            AdminAuth admin) throws ClientPolicyException {
-        if(isAugmentRequired()) augment(rep);
-        validate(rep);
-    };
-
-    // on Admin REST API Registration access for updating client
-    @Override
-    public void executeOnClientUpdate(
-            ClientRepresentation rep,
-            AdminAuth admin,
-            ClientModel client) throws ClientPolicyException {
-        if(isAugmentRequired()) augment(rep);
-        validate(rep);
-    };
-
-    /**
-     * returns true if this executor overrides the client settings. 
-     *
-     * @return true if this executor overrides the client settings
-     */
-    protected abstract boolean isAugmentRequired();
 
     /**
      * overrides the client settings specified by the argument.

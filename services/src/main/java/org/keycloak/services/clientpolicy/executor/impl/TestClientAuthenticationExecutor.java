@@ -24,9 +24,8 @@ import org.keycloak.OAuthErrorException;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 import org.keycloak.services.clientpolicy.executor.impl.AbstractClientPoicyExecutor;
 
 public class TestClientAuthenticationExecutor extends AbstractClientPoicyExecutor {
@@ -37,24 +36,9 @@ public class TestClientAuthenticationExecutor extends AbstractClientPoicyExecuto
         super(session, componentModel);
     }
 
-    @Override
-    public boolean isExecutedOnEvent(String event) {
-        switch (event) {
-            case ClientPolicyEvent.DYNAMIC_REGISTER:
-            case ClientPolicyEvent.DYNAMIC_UPDATE:
-            case ClientPolicyEvent.ADMIN_REGISTER:
-            case ClientPolicyEvent.ADMIN_UPDATE:
-                return true;
-        }
-        return false;
-    }
-
-    protected boolean isAugmentRequired() {
-        return Boolean.valueOf(componentModel.getConfig().getFirst(ClientPolicyExecutorFactory.IS_AUGMENT));
-    }
-
     protected void augment(ClientRepresentation rep) {
-        rep.setClientAuthenticatorType(enforcedClientAuthenticatorType());
+        if (Boolean.valueOf(componentModel.getConfig().getFirst(ClientPolicyExecutorProviderFactory.IS_AUGMENT)))
+            rep.setClientAuthenticatorType(enforcedClientAuthenticatorType());
     }
 
     protected void validate(ClientRepresentation rep) throws ClientPolicyException {
