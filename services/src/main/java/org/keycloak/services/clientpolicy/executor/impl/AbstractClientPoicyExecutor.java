@@ -19,20 +19,13 @@ package org.keycloak.services.clientpolicy.executor.impl;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
-import org.keycloak.services.clientregistration.ClientRegistrationContext;
-import org.keycloak.services.clientregistration.policy.RegistrationAuth;
-import org.keycloak.services.resources.admin.AdminAuth;
 
-/**
- * Executor can override the client settings to enforce some actions.
- * This feature can be activated or deactivated.
- */
 public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecutorProvider {
 
     protected static final Logger logger = Logger.getLogger(AbstractClientPoicyExecutor.class);
@@ -46,17 +39,19 @@ public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecuto
     }
 
     @Override
-    public void executeOnClientUpdate(ClientUpdateContext context) throws ClientPolicyException {
+    public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
         case DYNAMIC_REGISTER:
         case DYNAMIC_UPDATE:
-            augment(context.getDynamicClientRegistrationContext().getClient());
-            validate(context.getDynamicClientRegistrationContext().getClient());
+            ClientUpdateContext clientUpdateContext = (ClientUpdateContext)context;
+            augment(clientUpdateContext.getDynamicClientRegistrationContext().getClient());
+            validate(clientUpdateContext.getDynamicClientRegistrationContext().getClient());
             break;
         case ADMIN_REGISTER:
         case ADMIN_UPDATE:
-            augment(context.getProposedClientRepresentation());
-            validate(context.getProposedClientRepresentation());
+            clientUpdateContext = (ClientUpdateContext)context;
+            augment(clientUpdateContext.getProposedClientRepresentation());
+            validate(clientUpdateContext.getProposedClientRepresentation());
             break;
         default:
             return;

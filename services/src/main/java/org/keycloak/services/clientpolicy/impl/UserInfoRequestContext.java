@@ -17,35 +17,26 @@
 
 package org.keycloak.services.clientpolicy.impl;
 
-import org.keycloak.representations.idm.ClientRepresentation;
+import javax.ws.rs.core.MultivaluedMap;
+
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
-import org.keycloak.services.clientpolicy.ClientUpdateContext;
-import org.keycloak.services.resources.admin.AdminAuth;
 
-public class AdminClientRegisterContext implements ClientUpdateContext {
+public class UserInfoRequestContext implements ClientPolicyContext {
 
-    private final ClientRepresentation clientRepresentation;
-    private final AdminAuth adminAuth;
+    private final MultivaluedMap<String, String> params;
 
-    public AdminClientRegisterContext(ClientRepresentation clientRepresentation,
-            AdminAuth adminAuth) {
-        this.clientRepresentation = clientRepresentation;
-        this.adminAuth = adminAuth;
+    public UserInfoRequestContext(MultivaluedMap<String, String> params) {
+        this.params = params;
     }
 
     @Override
     public ClientPolicyEvent getEvent() {
-        return ClientPolicyEvent.ADMIN_REGISTER;
+        return ClientPolicyEvent.USERINFO_REQUEST;
     }
 
-    @Override
-    public ClientRepresentation getProposedClientRepresentation() {
-        return clientRepresentation;
-    }
-
-    @Override
-    public AdminAuth getAdminAuth() {
-        return adminAuth;
+    public MultivaluedMap<String, String> getParams() {
+        return params;
     }
 
 }

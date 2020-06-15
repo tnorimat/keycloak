@@ -24,7 +24,6 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
-import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
@@ -44,8 +43,6 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
     @Override
     public void close() {
     }
-
-
 
     @Override
     public List<ClientPolicyConditionProvider> getConditions() {

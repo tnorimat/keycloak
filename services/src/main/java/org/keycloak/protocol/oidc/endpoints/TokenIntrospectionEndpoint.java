@@ -32,7 +32,8 @@ import org.keycloak.protocol.oidc.utils.AuthorizeClientUtil;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.ClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.TokenIntrospectContext;
 
 import javax.ws.rs.POST;
 import javax.ws.rs.core.Context;
@@ -99,7 +100,7 @@ public class TokenIntrospectionEndpoint {
         }
 
         try {
-            ClientPolicyManager.triggerOnTokenIntrospect(formParams, session);
+            session.clientPolicy().triggerOnEvent(new TokenIntrospectContext(formParams));
         } catch (ClientPolicyException cpe) {
             throw throwErrorResponseException(Errors.INVALID_REQUEST, cpe.getErrorDetail(), Status.BAD_REQUEST);
         }

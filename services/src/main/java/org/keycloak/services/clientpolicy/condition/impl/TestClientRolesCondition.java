@@ -19,18 +19,14 @@ package org.keycloak.services.clientpolicy.condition.impl;
 
 import java.util.List;
 
-import javax.ws.rs.core.MultivaluedMap;
-
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.protocol.oidc.endpoints.request.AuthorizationEndpointRequest;
-import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
-import org.keycloak.protocol.oidc.utils.OIDCResponseType;
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
-import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.impl.ClientPolicyLogger;
 
 public class TestClientRolesCondition implements ClientPolicyConditionProvider {
 
@@ -61,56 +57,20 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
 
     }
 
-    // on Authorization Endpoint access for authorization request
     @Override
-    public boolean isSatisfiedOnAuthorizationRequest(
-            OIDCResponseType parsedResponseType,
-            AuthorizationEndpointRequest request,
-            String redirectUri) {
-        return isRolesMatched(session.getContext().getClient());
-    }
-
-    // on Token Endpoint access for token request
-    @Override
-    public boolean isSatisfiedOnTokenRequest(
-            MultivaluedMap<String, String> params,
-            OAuth2CodeParser.ParseResult parseResult) {
-        return isRolesMatched(session.getContext().getClient());
-    }
-
-    // on Token Endpoint access for token refresh
-    @Override
-    public boolean isSatisfiedOnTokenRefresh(
-            MultivaluedMap<String, String> params) {
-        return isRolesMatched(session.getContext().getClient());
-    }
-
-    // on Token Revocation Endpoint access for token revoke
-    @Override
-    public boolean isSatisfiedOnTokenRevoke(
-            MultivaluedMap<String, String> params) {
-        return isRolesMatched(session.getContext().getClient());
-    }
-
-    // on Token Introspenction Endpoint access for token introspect
-    @Override
-    public boolean isSatisfiedOnTokenIntrospect(
-            MultivaluedMap<String, String> params) {
-        return isRolesMatched(session.getContext().getClient());
-    }
-
-    // on UserInfo Endpoint access for userinfo request
-    @Override
-    public boolean isSatisfiedOnUserInfoRequest(
-            MultivaluedMap<String, String> params) {
-        return isRolesMatched(session.getContext().getClient());
-    }
-
-    // on Logout Endpoint access for logout request
-    @Override
-    public boolean isSatisfiedOnLogoutRequest(
-            MultivaluedMap<String, String> params) {
-        return isRolesMatched(session.getContext().getClient());
+    public boolean isSatisfiedOnEvent(ClientPolicyContext context) {
+        switch (context.getEvent()) {
+            case AUTHORIZATION_REQUEST:
+            case TOKEN_REQUEST:
+            case TOKEN_REFRESH:
+            case TOKEN_REVOKE:
+            case TOKEN_INTROSPECT:
+            case USERINFO_REQUEST:
+            case LOGOUT_REQUEST:
+                return isRolesMatched(session.getContext().getClient());
+            default:
+                return false;
+        }
     }
 
     private boolean isRolesMatched(ClientModel client) {

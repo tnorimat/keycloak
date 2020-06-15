@@ -84,7 +84,9 @@ import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.Urls;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.ClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.TokenRefreshContext;
+import org.keycloak.services.clientpolicy.impl.TokenRequestContext;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.managers.AuthenticationSessionManager;
@@ -405,7 +407,7 @@ public class TokenEndpoint {
         }
 
         try {
-            ClientPolicyManager.triggerOnTokenRequest(formParams, parseResult, session);
+            session.clientPolicy().triggerOnEvent(new TokenRequestContext(formParams, parseResult));
         } catch (ClientPolicyException cpe) {
             event.error(cpe.getError());
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
@@ -531,7 +533,7 @@ public class TokenEndpoint {
         }
 
         try {
-            ClientPolicyManager.triggerOnTokenRefresh(formParams, session);
+            session.clientPolicy().triggerOnEvent(new TokenRefreshContext(formParams));
         } catch (ClientPolicyException cpe) {
             event.error(cpe.getError());
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);

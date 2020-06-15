@@ -52,9 +52,9 @@ import org.keycloak.representations.idm.UserSessionRepresentation;
 import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.ClientPolicyManager;
 import org.keycloak.services.clientpolicy.impl.AdminClientRegisterContext;
 import org.keycloak.services.clientpolicy.impl.AdminClientUpdateContext;
+import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyManager;
 import org.keycloak.services.clientregistration.ClientRegistrationTokenUtils;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.managers.ClientManager;
@@ -149,7 +149,7 @@ public class ClientResource {
         }
 
         try {
-            ClientPolicyManager.triggerBeforeClientUpdate(session, new AdminClientUpdateContext(rep, auth.adminAuth(), client));
+            session.clientPolicy().triggerOnEvent(new AdminClientUpdateContext(rep, auth.adminAuth(), client));
         } catch (ClientPolicyException cpe) {
             throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }

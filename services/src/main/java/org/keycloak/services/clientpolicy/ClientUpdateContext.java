@@ -26,14 +26,7 @@ import org.keycloak.services.resources.admin.AdminAuth;
 /**
  * Represents the context in the client registration/update by Dynamic Client Registration or Admin REST API.
  */
-public interface ClientUpdateContext {
-
-    /**
-     * returns {@link ClientPolicyEvent} in this client registration/update context.
-     * 
-     * @return {@link ClientPolicyEvent}
-     */
-    ClientPolicyEvent getEvent();
+public interface ClientUpdateContext extends ClientPolicyContext {
 
     /**
      * returns {@link ClientModel} of the current client that will be updated.

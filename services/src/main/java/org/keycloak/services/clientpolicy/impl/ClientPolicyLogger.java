@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy;
+package org.keycloak.services.clientpolicy.impl;
 
 import org.jboss.logging.Logger;
 
 public class ClientPolicyLogger {
+
     public static void log(Logger logger, String content) {
         if(!logger.isTraceEnabled()) return;
         String buf = new StringBuffer()
@@ -28,9 +29,11 @@ public class ClientPolicyLogger {
             .toString();
         logger.trace(buf);
     }
+
     private static String getClassName() {
         return Thread.currentThread().getStackTrace()[2].getClassName();
     }
+
     private static String getMethodName() {
         return Thread.currentThread().getStackTrace()[3].getMethodName();
     }

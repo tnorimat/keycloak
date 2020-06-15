@@ -43,7 +43,8 @@ import org.keycloak.representations.RefreshToken;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.ClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.LogoutRequestContext;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.managers.UserSessionManager;
 import org.keycloak.services.messages.Messages;
@@ -196,7 +197,7 @@ public class LogoutEndpoint {
         }
 
         try {
-            ClientPolicyManager.triggerOnLogoutRequest(form, session);
+            session.clientPolicy().triggerOnEvent(new LogoutRequestContext(form));
         } catch (ClientPolicyException cpe) {
             throw new ErrorResponseException(Errors.INVALID_REQUEST, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }

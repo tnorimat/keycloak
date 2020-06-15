@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-
 package org.keycloak.services.clientpolicy.impl;
 
 import java.util.Arrays;

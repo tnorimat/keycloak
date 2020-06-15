@@ -51,7 +51,7 @@ public class ClientPolicyException extends Exception {
     }
 
     /**
-     * Since ClientPolicyException is used to notify the event so that it needs not to have stack trace.
+     * If {@link ClientPolicyException} is used to notify the event so that it needs not to have stack trace.
      * @return always null
      */
     @Override

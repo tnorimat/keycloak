@@ -38,9 +38,12 @@ import org.keycloak.protocol.oidc.utils.OAuth2Code;
 import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 import org.keycloak.services.clientpolicy.executor.impl.AbstractClientPoicyExecutor;
+import org.keycloak.services.clientpolicy.impl.AuthorizationRequestContext;
+import org.keycloak.services.clientpolicy.impl.TokenRequestContext;
 
 public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
 
@@ -64,9 +67,26 @@ public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
         throw new ClientPolicyException(OAuthErrorException.INVALID_CLIENT_METADATA, "Invalid client metadata: code_challenge_method");
     }
 
-    // on Authorization Endpoint access for authorization request
     @Override
-    public void executeOnAuthorizationRequest(
+    public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+        super.executeOnEvent(context);
+        switch (context.getEvent()) {
+            case AUTHORIZATION_REQUEST:
+                AuthorizationRequestContext authorizationRequestContext = (AuthorizationRequestContext)context;
+                executeOnAuthorizationRequest(authorizationRequestContext.getparsedResponseType(),
+                    authorizationRequestContext.getAuthorizationEndpointRequest(),
+                    authorizationRequestContext.getRedirectUri());
+                return;
+            case TOKEN_REQUEST:
+                TokenRequestContext tokenRequestContext = (TokenRequestContext)context;
+                executeOnTokenRequest(tokenRequestContext.getParams(), tokenRequestContext.getParseResult());
+                return;
+            default:
+                return;
+        }
+    }
+
+    private void executeOnAuthorizationRequest(
             OIDCResponseType parsedResponseType,
             AuthorizationEndpointRequest request,
             String redirectUri) throws ClientPolicyException {
@@ -97,9 +117,7 @@ public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
 
     }
 
-    // on Token Endpoint access for token request
-    @Override
-    public void executeOnTokenRequest(
+    private void executeOnTokenRequest(
             MultivaluedMap<String, String> params,
             OAuth2CodeParser.ParseResult parseResult) throws ClientPolicyException {
         String codeVerifier = params.getFirst(OAuth2Constants.CODE_VERIFIER);

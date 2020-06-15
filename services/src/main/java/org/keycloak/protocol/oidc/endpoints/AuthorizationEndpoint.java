@@ -44,8 +44,10 @@ import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.services.ErrorPageException;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.Urls;
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.ClientPolicyManager;
+import org.keycloak.services.clientpolicy.impl.AuthorizationRequestContext;
+import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.LoginActionsService;
 import org.keycloak.services.util.CacheControlUtil;
@@ -156,7 +158,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         }
 
         try {
-            ClientPolicyManager.triggerOnAuthorizationRequest(parsedResponseType, request, redirectUri, session);
+            session.clientPolicy().triggerOnEvent(new AuthorizationRequestContext(parsedResponseType, request, redirectUri));
         } catch (ClientPolicyException cpe) {
             return redirectErrorToClient(parsedResponseMode, cpe.getError(), cpe.getErrorDetail());
         }

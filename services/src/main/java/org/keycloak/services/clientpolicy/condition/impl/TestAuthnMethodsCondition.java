@@ -19,16 +19,12 @@ package org.keycloak.services.clientpolicy.condition.impl;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
-import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
-import org.keycloak.services.clientregistration.ClientRegistrationContext;
-import org.keycloak.services.clientregistration.policy.RegistrationAuth;
-import org.keycloak.services.resources.admin.AdminAuth;
+import org.keycloak.services.clientpolicy.impl.ClientPolicyLogger;
 
 public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider {
 
@@ -43,11 +39,12 @@ public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider 
     }
 
     @Override
-    public boolean isSatisfiedOnClientUpdate(ClientUpdateContext context) {
+    public boolean isSatisfiedOnEvent(ClientPolicyContext context) {
         switch (context.getEvent()) {
         case DYNAMIC_REGISTER:
         case DYNAMIC_UPDATE:
-            return context.getDynamicRegistrationAuth() == null ? false : isAuthMethodMatched(context.getDynamicRegistrationAuth().name());
+            ClientUpdateContext clientUpdateContext = (ClientUpdateContext)context;
+            return clientUpdateContext.getDynamicRegistrationAuth() == null ? false : isAuthMethodMatched(clientUpdateContext.getDynamicRegistrationAuth().name());
         case ADMIN_REGISTER:
         case ADMIN_UPDATE:
             return isAuthMethodMatched(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API);
