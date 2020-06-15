@@ -64,11 +64,13 @@ import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyProviderFactor
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
+import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
 import org.keycloak.testsuite.util.OAuthClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+@EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
 public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
     private static final Logger logger = Logger.getLogger(ClientPolicyBasicsTest.class);
@@ -107,7 +109,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         testRealms.add(realm);
     }
 
-    @Test
+    //@Test
     public void testPurgePreviewProfile() throws ClientRegistrationException, ClientPolicyException {
         String policyName = "MyPolicy";
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
