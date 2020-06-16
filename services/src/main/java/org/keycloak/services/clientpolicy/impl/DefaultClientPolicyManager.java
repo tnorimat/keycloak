@@ -25,7 +25,6 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
-import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyManager;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
@@ -47,47 +46,56 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
         if (!Profile.isFeatureEnabled(Profile.Feature.CLIENT_POLICIES)) return;
         ClientPolicyLogger.log(logger, "Client Policy Operation : event = " + context.getEvent());
         doPolicyOperation(
-                context.getEvent(),
                 (ClientPolicyConditionProvider condition) -> condition.isSatisfiedOnEvent(context),
                 (ClientPolicyExecutorProvider executor) -> executor.executeOnEvent(context)
         );
     }
 
-    private void doPolicyOperation(ClientPolicyEvent event, ClientConditionOperation condition, ClientExecutorOperation executor) throws ClientPolicyException {
+    private void doPolicyOperation(ClientConditionOperation condition, ClientExecutorOperation executor) throws ClientPolicyException {
         RealmModel realm = session.getContext().getRealm();
         List<ComponentModel> policyModels = realm.getComponents(realm.getId(), ClientPolicyProvider.class.getName());
         for (ComponentModel policyModel : policyModels) {
             ClientPolicyProvider policy = session.getProvider(ClientPolicyProvider.class, policyModel);
             ClientPolicyLogger.log(logger, "Policy Name = " + policyModel.getName());
-            if (!isSatisfied(policy, event, condition)) continue;
+            if (!isSatisfied(policy, condition)) continue;
             execute(policy, executor);
         }
     }
 
     private boolean isSatisfied(
             ClientPolicyProvider policy,
-            ClientPolicyEvent event,
             ClientConditionOperation op) throws ClientPolicyException {
 
-        List<ClientPolicyConditionProvider> conditions = policy.getConditions(event);
+        List<ClientPolicyConditionProvider> conditions = policy.getConditions();
 
         if (conditions == null || conditions.isEmpty()) {
-            ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. No condition evalutated.");
+            ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. No condition exists.");
             return false;
         }
 
-        if (conditions.stream().anyMatch(t -> {
-                    try {return !op.run(t);} catch (ClientPolicyException e) {
-                        ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. " + e);
-                        return false;
-                    }
-            })) {
-            ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. Not all conditones satisfied.");
-            return false;
+        boolean ret = false;
+        for (ClientPolicyConditionProvider condition : conditions) {
+            try {
+                if (!op.run(condition)) {
+                    ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. Not all conditones satisfied.");
+                    return false;
+                } else {
+                    ret = true;
+                }
+            } catch (ClientPolicyException e) {
+                if (e.getError().equals(ClientPolicyConditionProvider.SKIP_EVALUATION)) continue;
+                ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. " + e);
+                return false;
+            }
         }
 
-        ClientPolicyLogger.log(logger, "POSITIVE :: This policy is applied.");
-        return true;
+        if (ret == true) {
+            ClientPolicyLogger.log(logger, "POSITIVE :: This policy is applied.");
+        } else {
+            ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. No condition is evaluated.");
+        }
+
+        return ret;
  
     }
 

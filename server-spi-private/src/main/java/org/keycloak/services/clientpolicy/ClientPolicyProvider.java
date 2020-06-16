@@ -36,15 +36,6 @@ public interface ClientPolicyProvider extends Provider {
     List<ClientPolicyConditionProvider> getConditions();
 
     /**
-     * returns the list of conditions which this provider accommodates
-     * and can be evaluated in its nature on the specified event.
-     * 
-     * @param event
-     * @return list of conditions
-     */
-    List<ClientPolicyConditionProvider> getConditions(ClientPolicyEvent event);
-
-    /**
      * returns the list of executors which this provider accommodates.
      *
      * @return list of executors

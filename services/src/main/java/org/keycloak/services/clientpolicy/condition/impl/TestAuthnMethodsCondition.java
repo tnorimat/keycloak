@@ -21,7 +21,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
-import org.keycloak.services.clientpolicy.ClientPolicyEvent;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.impl.ClientPolicyLogger;
@@ -39,7 +39,7 @@ public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider 
     }
 
     @Override
-    public boolean isSatisfiedOnEvent(ClientPolicyContext context) {
+    public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
         case DYNAMIC_REGISTER:
         case DYNAMIC_UPDATE:
@@ -49,20 +49,7 @@ public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider 
         case ADMIN_UPDATE:
             return isAuthMethodMatched(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API);
         default:
-            return false;
-        }
-    }
-
-    @Override
-    public boolean isEvaluatedOnEvent(ClientPolicyEvent event) {
-        switch (event) {
-            case DYNAMIC_REGISTER:
-            case DYNAMIC_UPDATE:
-            case ADMIN_REGISTER:
-            case ADMIN_UPDATE:
-                return true;
-            default:
-                return false;
+            throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
         }
     }
 

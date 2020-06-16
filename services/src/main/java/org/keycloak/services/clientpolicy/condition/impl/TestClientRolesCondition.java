@@ -24,7 +24,7 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
-import org.keycloak.services.clientpolicy.ClientPolicyEvent;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.impl.ClientPolicyLogger;
 
@@ -41,24 +41,7 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
     }
 
     @Override
-    public boolean isEvaluatedOnEvent(ClientPolicyEvent event) {
-        switch (event) {
-            case AUTHORIZATION_REQUEST:
-            case TOKEN_REQUEST:
-            case TOKEN_REFRESH:
-            case TOKEN_REVOKE:
-            case TOKEN_INTROSPECT:
-            case USERINFO_REQUEST:
-            case LOGOUT_REQUEST:
-                return true;
-            default:
-                return false;
-        }
-
-    }
-
-    @Override
-    public boolean isSatisfiedOnEvent(ClientPolicyContext context) {
+    public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
             case AUTHORIZATION_REQUEST:
             case TOKEN_REQUEST:
@@ -69,7 +52,7 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
             case LOGOUT_REQUEST:
                 return isRolesMatched(session.getContext().getClient());
             default:
-                return false;
+                throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
         }
     }
 

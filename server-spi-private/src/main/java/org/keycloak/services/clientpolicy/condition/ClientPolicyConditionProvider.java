@@ -20,6 +20,7 @@ package org.keycloak.services.clientpolicy.condition;
 import org.keycloak.provider.Provider;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
 
 /**
  * This condition determines to which client a {@link ClientPolicyProvider} is adopted.
@@ -29,26 +30,18 @@ import org.keycloak.services.clientpolicy.ClientPolicyEvent;
  */
 public interface ClientPolicyConditionProvider extends Provider {
 
+    final String SKIP_EVALUATION = "skip-evaluation";
+
     @Override
     default void close() {}
-
-    /**
-     * returns true if this condition is evaluated to check
-     * whether the client satisfies this condition on the event specified as a parameter.
-     * A condition can be implemented to be evaluated on some events while not on others.
-     * On the event specified as the parameter, this condition is skipped if this method returns false.
-     *
-     * @param event defined in {@link ClientPolicyEvent}
-     * @return true if this condition is evaluated on the event.
-     */
-    default boolean isEvaluatedOnEvent(ClientPolicyEvent event) {return true;}
 
     /**
      * returns true if the client satisfies this condition on the event defined in {@link ClientPolicyEvent}.
      *
      * @param context - the context of the event.
      * @return true if the client satisfies this condition.
+     * @throws {@link ClientPolicyException} - thrown if the condition is not evaluated in its nature on the event specified by context.
      */
-    default boolean isSatisfiedOnEvent(ClientPolicyContext context) {return true;}
+    default boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {return true;}
 
 }

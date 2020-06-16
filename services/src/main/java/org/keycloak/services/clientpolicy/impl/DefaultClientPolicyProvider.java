@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
@@ -56,21 +55,6 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
                         ClientPolicyLogger.log(logger, new StringBuffer().append("Condition ID = ").append(s).append(", Condition Name = ").append(cm.getName()).append(", Condition Provider ID = ").append(cm.getProviderId()).toString());
                         return session.getProvider(ClientPolicyConditionProvider.class, cm);
                     }).collect(Collectors.toList());
-
-        return conditions;
-    }
-
-    @Override
-    public List<ClientPolicyConditionProvider> getConditions(ClientPolicyEvent event) {
-        List<String> conditionIds = getConditionIds();
-
-        if (conditionIds == null || conditionIds.isEmpty()) return null;
-        List<ClientPolicyConditionProvider> conditions = conditionIds.stream()
-                .map(s -> {
-                        ComponentModel cm = session.getContext().getRealm().getComponent(s);
-                        ClientPolicyLogger.log(logger, new StringBuffer().append("Condition ID = ").append(s).append(", Condition Name = ").append(cm.getName()).append(", Condition Provider ID = ").append(cm.getProviderId()).toString());
-                        return session.getProvider(ClientPolicyConditionProvider.class, cm);
-                    }).filter(t -> t.isEvaluatedOnEvent(event)).collect(Collectors.toList());
 
         return conditions;
     }
