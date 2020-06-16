@@ -17,7 +17,10 @@
 
 package org.keycloak.services.clientpolicy.impl;
 
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.jboss.logging.Logger;
 import org.keycloak.common.Profile;
@@ -36,6 +39,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
     private static final Logger logger = Logger.getLogger(DefaultClientPolicyManager.class);
 
     private final KeycloakSession session;
+    private final Map<String, List<ClientPolicyProvider>> providersMap = new HashMap<>();
 
     public DefaultClientPolicyManager(KeycloakSession session) {
         this.session = session;
@@ -53,13 +57,32 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
 
     private void doPolicyOperation(ClientConditionOperation condition, ClientExecutorOperation executor) throws ClientPolicyException {
         RealmModel realm = session.getContext().getRealm();
-        List<ComponentModel> policyModels = realm.getComponents(realm.getId(), ClientPolicyProvider.class.getName());
-        for (ComponentModel policyModel : policyModels) {
-            ClientPolicyProvider policy = session.getProvider(ClientPolicyProvider.class, policyModel);
-            ClientPolicyLogger.log(logger, "Policy Name = " + policyModel.getName());
+        for (ClientPolicyProvider policy : getProviders(realm)) {
             if (!isSatisfied(policy, condition)) continue;
             execute(policy, executor);
         }
+    }
+
+    private List<ClientPolicyProvider> getProviders(RealmModel realm) {
+        List<ClientPolicyProvider> providers = providersMap.get(realm.getId());
+        if (providers == null) {
+            providers = new LinkedList<>();
+            List<ComponentModel> policyModels = realm.getComponents(realm.getId(), ClientPolicyProvider.class.getName());
+            for (ComponentModel policyModel : policyModels) {
+                try {
+                    ClientPolicyProvider policy = session.getProvider(ClientPolicyProvider.class, policyModel);
+                    ClientPolicyLogger.log(logger, "Loaded Policy Name = " + policyModel.getName());
+                    session.enlistForClose(policy);
+                    providers.add(policy);
+                } catch (Throwable t) {
+                    logger.errorv(t, "Failed to load provider {0}", policyModel.getId());
+                }
+            }
+            providersMap.put(realm.getId(), providers);
+        } else {
+            ClientPolicyLogger.log(logger, "Use cached policies.");
+        }
+        return providers;
     }
 
     private boolean isSatisfied(

@@ -17,12 +17,15 @@
 
 package org.keycloak.services.clientpolicy.impl;
 
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
@@ -33,6 +36,8 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
 
     private final KeycloakSession session;
     private final ComponentModel componentModel;
+    private final Map<String, List<ClientPolicyConditionProvider>> conditionsMap = new HashMap<>();
+    private final Map<String, List<ClientPolicyExecutorProvider>> executorsMap = new HashMap<>();
 
     public DefaultClientPolicyProvider(KeycloakSession session, ComponentModel componentModel) {
         this.session = session;
@@ -45,34 +50,13 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
 
     @Override
     public List<ClientPolicyConditionProvider> getConditions() {
-        List<String> conditionIds = getConditionIds();
-
-        if (conditionIds == null || conditionIds.isEmpty()) return null;
-
-        List<ClientPolicyConditionProvider> conditions = conditionIds.stream()
-                .map(s -> {
-                        ComponentModel cm = session.getContext().getRealm().getComponent(s);
-                        ClientPolicyLogger.log(logger, new StringBuffer().append("Condition ID = ").append(s).append(", Condition Name = ").append(cm.getName()).append(", Condition Provider ID = ").append(cm.getProviderId()).toString());
-                        return session.getProvider(ClientPolicyConditionProvider.class, cm);
-                    }).collect(Collectors.toList());
-
-        return conditions;
+        return getConditions(session.getContext().getRealm());
     }
 
     @Override
     public List<ClientPolicyExecutorProvider> getExecutors() {
-        List<String> executorIds = getExecutorIds();
+        return getExecutors(session.getContext().getRealm());
 
-        if (executorIds == null || executorIds.isEmpty()) return null;
-
-        List<ClientPolicyExecutorProvider> executors = executorIds.stream()
-                .map(s -> {
-                        ComponentModel cm = session.getContext().getRealm().getComponent(s);
-                        ClientPolicyLogger.log(logger, new StringBuffer().append("Executor ID = ").append(s).append(", Executor Name = ").append(cm.getName()).append(", Executor Provider ID = ").append(cm.getProviderId()).toString());
-                        return session.getProvider(ClientPolicyExecutorProvider.class, cm);
-                    }).collect(Collectors.toList());
- 
-        return executors;
     }
 
     private List<String> getConditionIds() {
@@ -81,6 +65,54 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
 
     private List<String> getExecutorIds() {
         return componentModel.getConfig().getList(DefaultClientPolicyProviderFactory.EXECUTOR_IDS);
+    }
+
+    private List<ClientPolicyConditionProvider> getConditions(RealmModel realm) {
+        List<ClientPolicyConditionProvider> providers = conditionsMap.get(realm.getId());
+        if (providers == null) {
+            providers = new LinkedList<>();
+            List<String> conditionIds = getConditionIds();
+            if (conditionIds == null || conditionIds.isEmpty()) return null;
+            for(String conditionId : conditionIds) {
+                ComponentModel cm = session.getContext().getRealm().getComponent(conditionId);
+                try {
+                    ClientPolicyConditionProvider provider = session.getProvider(ClientPolicyConditionProvider.class, cm);
+                    providers.add(provider);
+                    session.enlistForClose(provider);
+                    ClientPolicyLogger.log(logger, new StringBuffer().append("Loaded Condition ID = ").append(conditionId).append(", Condition Name = ").append(cm.getName()).append(", Condition Provider ID = ").append(cm.getProviderId()).toString());
+                } catch (Throwable t) {
+                    logger.errorv(t, "Failed to load condition {0}", cm.getId());
+                }
+            }
+            conditionsMap.put(realm.getId(), providers);
+        } else {
+            ClientPolicyLogger.log(logger, "Use cached conditions.");
+        }
+        return providers;
+    }
+
+    private List<ClientPolicyExecutorProvider> getExecutors(RealmModel realm) {
+        List<ClientPolicyExecutorProvider> providers = executorsMap.get(realm.getId());
+        if (providers == null) {
+            providers = new LinkedList<>();
+            List<String> executorIds = getExecutorIds();
+            if (executorIds == null || executorIds.isEmpty()) return null;
+            for(String executorId : executorIds) {
+                ComponentModel cm = session.getContext().getRealm().getComponent(executorId);
+                try {
+                    ClientPolicyExecutorProvider provider = session.getProvider(ClientPolicyExecutorProvider.class, cm);
+                    providers.add(provider);
+                    session.enlistForClose(provider);
+                    ClientPolicyLogger.log(logger, new StringBuffer().append("Loaded Executor ID = ").append(executorId).append(", Executor Name = ").append(cm.getName()).append(", Executor Provider ID = ").append(cm.getProviderId()).toString());
+                } catch (Throwable t) {
+                    logger.errorv(t, "Failed to load executor {0}", cm.getId());
+                }
+            }
+            executorsMap.put(realm.getId(), providers);
+        } else {
+            ClientPolicyLogger.log(logger, "Use cached executors.");
+        }
+        return providers;
     }
 
 }
