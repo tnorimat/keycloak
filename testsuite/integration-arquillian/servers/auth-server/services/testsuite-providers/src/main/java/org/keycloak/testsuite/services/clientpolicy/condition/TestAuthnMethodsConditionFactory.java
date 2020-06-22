@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.condition.impl;
+package org.keycloak.testsuite.services.clientpolicy.condition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,24 +28,24 @@ import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProviderFactory;
-import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 
 public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionProviderFactory {
 
     public static final String PROVIDER_ID = "test-authnmethods-condition";
 
     public static final String AUTH_METHOD = "auth-method";
-    public static final String BY_ADMIN_REST_API = "ByAdminRestAPI";
-    public static final String BY_DYNAMIC_ANONYMOUS = RegistrationAuth.ANONYMOUS.name();
-    public static final String BY_DYNAMIC_AUTHENTICATED = RegistrationAuth.AUTHENTICATED.name();
 
+    public static final String BY_AUTHENTICATED_USER = "ByAuthenticatedUser";
+    public static final String BY_ANONYMOUS = "ByAnonymous";
+    public static final String BY_INITIAL_ACCESS_TOKEN = "ByInitialAccessToken";
+    public static final String BY_REGISTRATION_ACCESS_TOKEN = "ByRegistrationAccessToken";
 
     private static final List<ProviderConfigProperty> configProperties = new ArrayList<ProviderConfigProperty>();
 
     static {
         ProviderConfigProperty property;
-        property = new ProviderConfigProperty(AUTH_METHOD, null, null, ProviderConfigProperty.MULTIVALUED_LIST_TYPE, BY_DYNAMIC_AUTHENTICATED);
-        List<String> updateProfileValues = Arrays.asList(BY_DYNAMIC_ANONYMOUS, BY_DYNAMIC_AUTHENTICATED, BY_ADMIN_REST_API);
+        property = new ProviderConfigProperty(AUTH_METHOD, null, null, ProviderConfigProperty.MULTIVALUED_LIST_TYPE, BY_AUTHENTICATED_USER);
+        List<String> updateProfileValues = Arrays.asList(BY_AUTHENTICATED_USER, BY_ANONYMOUS, BY_INITIAL_ACCESS_TOKEN, BY_REGISTRATION_ACCESS_TOKEN);
         property.setOptions(updateProfileValues);
         configProperties.add(property);
     }

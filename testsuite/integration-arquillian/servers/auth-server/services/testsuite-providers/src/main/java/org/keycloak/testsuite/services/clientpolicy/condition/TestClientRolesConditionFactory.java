@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.condition.impl;
+package org.keycloak.testsuite.services.clientpolicy.condition;
 
 import java.util.ArrayList;
 import java.util.List;

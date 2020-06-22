@@ -17,14 +17,7 @@
 
 package org.keycloak.services.clientpolicy;
 
-import java.util.List;
-
 import org.keycloak.component.ComponentFactory;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.provider.ProviderConfigProperty;
 
 public interface ClientPolicyProviderFactory extends ComponentFactory<ClientPolicyProvider, ClientPolicyProvider> {
-
-    List<ProviderConfigProperty> getConfigProperties(KeycloakSession session);
-
 }

@@ -33,7 +33,8 @@ public interface ClientPolicyConditionProvider extends Provider {
     final String SKIP_EVALUATION = "skip-evaluation";
 
     @Override
-    default void close() {}
+    default void close() {
+    }
 
     /**
      * returns true if the client satisfies this condition on the event defined in {@link ClientPolicyEvent}.
@@ -42,6 +43,11 @@ public interface ClientPolicyConditionProvider extends Provider {
      * @return true if the client satisfies this condition.
      * @throws {@link ClientPolicyException} - thrown if the condition is not evaluated in its nature on the event specified by context.
      */
-    default boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {return true;}
+    default boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+        return true;
+    }
 
+    String getName();
+
+    String getProviderId();
 }

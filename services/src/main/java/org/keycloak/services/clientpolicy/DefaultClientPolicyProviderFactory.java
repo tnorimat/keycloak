@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.impl;
+package org.keycloak.services.clientpolicy;
 
 import java.util.Arrays;
 import java.util.List;
@@ -67,11 +67,6 @@ public class DefaultClientPolicyProviderFactory implements ClientPolicyProviderF
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return Arrays.asList(CONDITION_IDS_PROPERTY, EXECUTOR_IDS_PROPERTY);
-    }
-
-    @Override
-    public List<ProviderConfigProperty> getConfigProperties(KeycloakSession session) {
         return Arrays.asList(CONDITION_IDS_PROPERTY, EXECUTOR_IDS_PROPERTY);
     }
 

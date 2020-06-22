@@ -15,29 +15,34 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.executor.impl;
+package org.keycloak.testsuite.services.clientpolicy.executor;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.keycloak.Config.Scope;
+import org.keycloak.authentication.authenticators.client.JWTClientAuthenticator;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.services.clientpolicy.executor.AbstractAugumentingClientRegistrationPolicyExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
 
-public class TestPKCEEnforceExecutorFactory implements ClientPolicyExecutorProviderFactory {
+public class TestClientAuthenticationExecutorFactory extends AbstractAugumentingClientRegistrationPolicyExecutorFactory {
 
-    public static final String PROVIDER_ID = "test-pkce-enforce-executor";
+    public static final String PROVIDER_ID = "test-client-authn-executor";
 
-    private static final ProviderConfigProperty PKCE_IS_AUGMENT_PROPERTY = new ProviderConfigProperty(
-             ClientPolicyExecutorProviderFactory.IS_AUGMENT, null, null, ProviderConfigProperty.BOOLEAN_TYPE, false);
+    public static final String CLIENT_AUTHNS = "client-authns";
+    public static final String CLIENT_AUTHNS_AUGMENT = "client-authns-augment";
+
+    private static final ProviderConfigProperty CLIENTAUTHNS_PROPERTY = new ProviderConfigProperty(
+            CLIENT_AUTHNS, null, null, ProviderConfigProperty.MULTIVALUED_STRING_TYPE, null);
+    private static final ProviderConfigProperty CLIENTAUTHNS_AUGMENT = new ProviderConfigProperty(
+            CLIENT_AUTHNS_AUGMENT, null, null, ProviderConfigProperty.STRING_TYPE, JWTClientAuthenticator.PROVIDER_ID);
 
     @Override
     public ClientPolicyExecutorProvider create(KeycloakSession session, ComponentModel model) {
-        return new TestPKCEEnforceExecutor(session, model);
+        return new TestClientAuthenticationExecutor(session, model);
     }
 
     @Override
@@ -64,7 +69,10 @@ public class TestPKCEEnforceExecutorFactory implements ClientPolicyExecutorProvi
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return Arrays.asList(PKCE_IS_AUGMENT_PROPERTY);
+        List<ProviderConfigProperty> l = super.getConfigProperties();
+        l.add(CLIENTAUTHNS_PROPERTY);
+        l.add(CLIENTAUTHNS_AUGMENT);
+        return l;
     }
 
 }

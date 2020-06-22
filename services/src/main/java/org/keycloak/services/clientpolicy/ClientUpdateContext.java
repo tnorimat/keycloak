@@ -18,10 +18,9 @@
 package org.keycloak.services.clientpolicy;
 
 import org.keycloak.models.ClientModel;
+import org.keycloak.models.UserModel;
+import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clientregistration.ClientRegistrationContext;
-import org.keycloak.services.clientregistration.policy.RegistrationAuth;
-import org.keycloak.services.resources.admin.AdminAuth;
 
 /**
  * Represents the context in the client registration/update by Dynamic Client Registration or Admin REST API.
@@ -29,38 +28,48 @@ import org.keycloak.services.resources.admin.AdminAuth;
 public interface ClientUpdateContext extends ClientPolicyContext {
 
     /**
-     * returns {@link ClientModel} of the current client that will be updated.
-     *
-     * @return {@link ClientModel}
-     */
-    default ClientModel getCurrentClientModel() {return null;}
-
-    /**
-     * returns {@link ClientRepresentation} for updating the current client by Admin REST API.
+     * returns {@link ClientRepresentation} for creating or updating the current client.
      *
      * @return {@link ClientRepresentation}
      */
-    default ClientRepresentation getProposedClientRepresentation() {return null;}
+    default ClientRepresentation getProposedClientRepresentation() {
+        return null;
+    }
 
     /**
-     * returns {@link RegistrationAuth} by Dynamic Client Registration.
+     * returns {@link ClientModel} of the current client to be updated.
      *
-     * @return {@link RegistrationAuth}
+     * @return {@link ClientModel}
      */
-    default RegistrationAuth getDynamicRegistrationAuth() {return null;}
+    default ClientModel getClientToBeUpdated() {
+        return null;
+    }
 
     /**
-     * returns {@link AdminAuth} by Admin REST API.
+     * returns {@link UserModel} of the authenticated user.
      *
-     * @return {@link AdminAuth}
+     * @return {@link UserModel}
      */
-    default AdminAuth getAdminAuth() {return null;}
+    default UserModel getAuthenticatedUser() {
+        return null;
+    }
 
     /**
-     * returns {@link ClientRegistrationContext} by Dynamic Client Registration.
+     * returns {@link UserModel} of the authenticated client.
      *
-     * @return {@link ClientRegistrationContext}
+     * @return {@link UserModel}
      */
-    default ClientRegistrationContext getDynamicClientRegistrationContext() {return null;}
+    default ClientModel getAuthenticatedClient() {
+        return null;
+    }
+
+    /**
+     * returns {@link JsonWebToken} of the token accompanied with registration/update client
+     *
+     * @return {@link JsonWebToken}
+     */
+    default JsonWebToken getToken() {
+        return null;
+    }
 
 }

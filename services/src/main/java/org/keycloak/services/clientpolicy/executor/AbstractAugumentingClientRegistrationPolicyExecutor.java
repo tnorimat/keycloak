@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.executor.impl;
+package org.keycloak.services.clientpolicy.executor;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
@@ -26,14 +26,17 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 
-public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecutorProvider {
+public abstract class AbstractAugumentingClientRegistrationPolicyExecutor implements ClientPolicyExecutorProvider {
 
-    protected static final Logger logger = Logger.getLogger(AbstractClientPoicyExecutor.class);
+    protected static final Logger logger = Logger.getLogger(AbstractAugumentingClientRegistrationPolicyExecutor.class);
+
+    protected static final String IS_AUGMENT = "is-augment";
 
     protected final KeycloakSession session;
     protected final ComponentModel componentModel;
 
-    public AbstractClientPoicyExecutor(KeycloakSession session, ComponentModel componentModel) {
+
+    public AbstractAugumentingClientRegistrationPolicyExecutor(KeycloakSession session, ComponentModel componentModel) {
         this.session = session;
         this.componentModel = componentModel;
     }
@@ -41,21 +44,25 @@ public abstract class AbstractClientPoicyExecutor implements ClientPolicyExecuto
     @Override
     public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
-        case DYNAMIC_REGISTER:
-        case DYNAMIC_UPDATE:
+        case REGISTER:
+        case UPDATE:
             ClientUpdateContext clientUpdateContext = (ClientUpdateContext)context;
-            augment(clientUpdateContext.getDynamicClientRegistrationContext().getClient());
-            validate(clientUpdateContext.getDynamicClientRegistrationContext().getClient());
-            break;
-        case ADMIN_REGISTER:
-        case ADMIN_UPDATE:
-            clientUpdateContext = (ClientUpdateContext)context;
             augment(clientUpdateContext.getProposedClientRepresentation());
             validate(clientUpdateContext.getProposedClientRepresentation());
             break;
         default:
             return;
         }
+    }
+
+    @Override
+    public String getName() {
+        return componentModel.getName();
+    }
+
+    @Override
+    public String getProviderId() {
+        return componentModel.getProviderId();
     }
 
     /**

@@ -15,16 +15,19 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.condition.impl;
+package org.keycloak.testsuite.services.clientpolicy.condition;
 
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
-import org.keycloak.services.clientpolicy.impl.ClientPolicyLogger;
+import org.keycloak.services.clientregistration.ClientRegistrationTokenUtils;
+import org.keycloak.util.TokenUtil;
 
 public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider {
 
@@ -41,13 +44,9 @@ public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider 
     @Override
     public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
-        case DYNAMIC_REGISTER:
-        case DYNAMIC_UPDATE:
-            ClientUpdateContext clientUpdateContext = (ClientUpdateContext)context;
-            return clientUpdateContext.getDynamicRegistrationAuth() == null ? false : isAuthMethodMatched(clientUpdateContext.getDynamicRegistrationAuth().name());
-        case ADMIN_REGISTER:
-        case ADMIN_UPDATE:
-            return isAuthMethodMatched(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API);
+        case REGISTER:
+        case UPDATE:
+            return isAuthMethodMatched((ClientUpdateContext)context);
         default:
             throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
         }
@@ -66,5 +65,47 @@ public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider 
             ClientPolicyLogger.log(logger, "auth method unmatched.");
         }
         return isMatched;
+    }
+
+    private boolean isAuthMethodMatched(ClientUpdateContext context) {
+        String authMethod = null;
+
+        if (context.getToken() == null) {
+            authMethod = TestAuthnMethodsConditionFactory.BY_ANONYMOUS;
+        } else if (isInitialAccessToken(context.getToken())) {
+            authMethod = TestAuthnMethodsConditionFactory.BY_INITIAL_ACCESS_TOKEN;
+        } else if (isRegistrationAccessToken(context.getToken())) {
+            authMethod = TestAuthnMethodsConditionFactory.BY_REGISTRATION_ACCESS_TOKEN;
+        } else if (isBearerToken(context.getToken())) {
+            if (context.getAuthenticatedUser() != null || context.getAuthenticatedClient() != null) {
+                authMethod = TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER;
+            } else {
+                authMethod = TestAuthnMethodsConditionFactory.BY_ANONYMOUS;
+            }
+        }
+
+        return isAuthMethodMatched(authMethod);
+    }
+ 
+    private boolean isInitialAccessToken(JsonWebToken jwt) {
+        return jwt != null && ClientRegistrationTokenUtils.TYPE_INITIAL_ACCESS_TOKEN.equals(jwt.getType());
+    }
+
+    private boolean isRegistrationAccessToken(JsonWebToken jwt) {
+        return jwt != null && ClientRegistrationTokenUtils.TYPE_REGISTRATION_ACCESS_TOKEN.equals(jwt.getType());
+    }
+
+    private boolean isBearerToken(JsonWebToken jwt) {
+        return jwt != null && TokenUtil.TOKEN_TYPE_BEARER.equals(jwt.getType());
+    }
+
+    @Override
+    public String getName() {
+        return componentModel.getName();
+    }
+
+    @Override
+    public String getProviderId() {
+        return componentModel.getProviderId();
     }
 }

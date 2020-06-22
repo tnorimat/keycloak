@@ -19,10 +19,8 @@ package org.keycloak.services.clientpolicy;
 
 public enum ClientPolicyEvent {
 
-    DYNAMIC_REGISTER,
-    DYNAMIC_UPDATE,
-    ADMIN_REGISTER,
-    ADMIN_UPDATE,
+    REGISTER,
+    UPDATE,
     AUTHORIZATION_REQUEST,
     TOKEN_REQUEST,
     TOKEN_REFRESH,

@@ -42,4 +42,7 @@ public interface ClientPolicyProvider extends Provider {
      */
     List<ClientPolicyExecutorProvider> getExecutors();
 
+    String getName();
+
+    String getProviderId();
 }

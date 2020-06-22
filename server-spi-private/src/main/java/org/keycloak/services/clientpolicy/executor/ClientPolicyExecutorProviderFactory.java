@@ -20,6 +20,4 @@ package org.keycloak.services.clientpolicy.executor;
 import org.keycloak.component.ComponentFactory;
 
 public interface ClientPolicyExecutorProviderFactory extends ComponentFactory<ClientPolicyExecutorProvider, ClientPolicyExecutorProvider> {
-
-    public static final String IS_AUGMENT = "is-augment";
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.executor.impl;
+package org.keycloak.testsuite.services.clientpolicy.executor;
 
 import java.util.List;
 
@@ -25,10 +25,9 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
-import org.keycloak.services.clientpolicy.executor.impl.AbstractClientPoicyExecutor;
+import org.keycloak.services.clientpolicy.executor.AbstractAugumentingClientRegistrationPolicyExecutor;
 
-public class TestClientAuthenticationExecutor extends AbstractClientPoicyExecutor {
+public class TestClientAuthenticationExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
 
     private static final Logger logger = Logger.getLogger(TestClientAuthenticationExecutor.class);
 
@@ -37,7 +36,7 @@ public class TestClientAuthenticationExecutor extends AbstractClientPoicyExecuto
     }
 
     protected void augment(ClientRepresentation rep) {
-        if (Boolean.valueOf(componentModel.getConfig().getFirst(ClientPolicyExecutorProviderFactory.IS_AUGMENT)))
+        if (Boolean.valueOf(componentModel.getConfig().getFirst(AbstractAugumentingClientRegistrationPolicyExecutor.IS_AUGMENT)))
             rep.setClientAuthenticatorType(enforcedClientAuthenticatorType());
     }
 
@@ -54,4 +53,5 @@ public class TestClientAuthenticationExecutor extends AbstractClientPoicyExecuto
         if (acceptableClientAuthn != null && acceptableClientAuthn.stream().anyMatch(i->i.equals(clientAuthenticatorType))) return;
         throw new ClientPolicyException(OAuthErrorException.INVALID_CLIENT_METADATA, "Invalid client metadata: token_endpoint_auth_method");
     }
+
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.condition.impl;
+package org.keycloak.testsuite.services.clientpolicy.condition;
 
 import java.util.List;
 
@@ -25,8 +25,8 @@ import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
-import org.keycloak.services.clientpolicy.impl.ClientPolicyLogger;
 
 public class TestClientRolesCondition implements ClientPolicyConditionProvider {
 
@@ -77,4 +77,15 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
     private List<String> getRolesForMatching() {
         return componentModel.getConfig().get(TestClientRolesConditionFactory.ROLES);
     }
+
+    @Override
+    public String getName() {
+        return componentModel.getName();
+    }
+
+    @Override
+    public String getProviderId() {
+        return componentModel.getProviderId();
+    }
+
 }

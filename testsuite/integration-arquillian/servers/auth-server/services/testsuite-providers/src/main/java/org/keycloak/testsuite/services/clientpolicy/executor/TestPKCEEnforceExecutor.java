@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.executor.impl;
+package org.keycloak.testsuite.services.clientpolicy.executor;
 
 import java.security.MessageDigest;
 import java.util.regex.Matcher;
@@ -38,14 +38,13 @@ import org.keycloak.protocol.oidc.utils.OAuth2Code;
 import org.keycloak.protocol.oidc.utils.OAuth2CodeParser;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientpolicy.AuthorizationRequestContext;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
-import org.keycloak.services.clientpolicy.executor.impl.AbstractClientPoicyExecutor;
-import org.keycloak.services.clientpolicy.impl.AuthorizationRequestContext;
-import org.keycloak.services.clientpolicy.impl.TokenRequestContext;
+import org.keycloak.services.clientpolicy.TokenRequestContext;
+import org.keycloak.services.clientpolicy.executor.AbstractAugumentingClientRegistrationPolicyExecutor;
 
-public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
+public class TestPKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
 
     private static final Logger logger = Logger.getLogger(TestPKCEEnforceExecutor.class);
 
@@ -57,7 +56,7 @@ public class TestPKCEEnforceExecutor extends AbstractClientPoicyExecutor {
     }
 
     protected void augment(ClientRepresentation rep) {
-        if (Boolean.valueOf(componentModel.getConfig().getFirst(ClientPolicyExecutorProviderFactory.IS_AUGMENT)))
+        if (Boolean.valueOf(componentModel.getConfig().getFirst(AbstractAugumentingClientRegistrationPolicyExecutor.IS_AUGMENT)))
             OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).setPkceCodeChallengeMethod(OAuth2Constants.PKCE_METHOD_S256);
     }
 

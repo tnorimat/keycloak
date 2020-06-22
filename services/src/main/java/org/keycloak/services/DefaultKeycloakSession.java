@@ -38,7 +38,7 @@ import org.keycloak.models.cache.UserCache;
 import org.keycloak.provider.Provider;
 import org.keycloak.provider.ProviderFactory;
 import org.keycloak.services.clientpolicy.ClientPolicyManager;
-import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyManager;
+import org.keycloak.services.clientpolicy.DefaultClientPolicyManager;
 import org.keycloak.sessions.AuthenticationSessionProvider;
 import org.keycloak.storage.ClientStorageManager;
 import org.keycloak.storage.UserStorageManager;

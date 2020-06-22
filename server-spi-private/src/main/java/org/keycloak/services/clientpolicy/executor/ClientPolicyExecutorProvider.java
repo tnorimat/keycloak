@@ -31,7 +31,8 @@ import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 public interface ClientPolicyExecutorProvider extends Provider {
 
     @Override
-    default void close() {}
+    default void close() {
+    }
 
     /**
      * execute actions against the client on the event defined in {@link ClientPolicyEvent}.
@@ -39,6 +40,10 @@ public interface ClientPolicyExecutorProvider extends Provider {
      * @param context - the context of the event.
      * @throws {@link ClientPolicyException} - if something wrong happens when execution actions.
      */
-    default void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {}
+    default void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+    }
 
+    String getName();
+
+    String getProviderId();
 }

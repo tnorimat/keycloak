@@ -1,0 +1,2 @@
+org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory
+org.keycloak.testsuite.services.clientpolicy.condition.TestClientRolesConditionFactory

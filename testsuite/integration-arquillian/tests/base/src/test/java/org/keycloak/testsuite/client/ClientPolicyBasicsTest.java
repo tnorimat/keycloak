@@ -53,18 +53,17 @@ import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
+import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
-import org.keycloak.services.clientpolicy.condition.impl.TestAuthnMethodsConditionFactory;
-import org.keycloak.services.clientpolicy.condition.impl.TestClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
-import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProviderFactory;
-import org.keycloak.services.clientpolicy.executor.impl.TestClientAuthenticationExecutorFactory;
-import org.keycloak.services.clientpolicy.executor.impl.TestPKCEEnforceExecutorFactory;
-import org.keycloak.services.clientpolicy.impl.DefaultClientPolicyProviderFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
+import org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory;
+import org.keycloak.testsuite.services.clientpolicy.condition.TestClientRolesConditionFactory;
+import org.keycloak.testsuite.services.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
+import org.keycloak.testsuite.services.clientpolicy.executor.TestPKCEEnforceExecutorFactory;
 import org.keycloak.testsuite.util.OAuthClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -397,6 +396,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             failLoginByNotFollowingPKCE(clientId);
 
             deletePolicy("MyPolicy");
+            logger.info("... Deleted Policy : MyPolicy");
 
             successfulLoginAndLogout(clientId, clientRep.getClientSecret());
 
@@ -463,7 +463,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         logger.info("... Registered Condition : TestClientRolesCondition");
 
         createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API)));
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
         });
         registerCondition("TestAuthnMethodsCondition", policyName);
         logger.info("... Registered Condition : TestAuthnMethodsCondition");
@@ -498,6 +498,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             assertEquals(OAuth2Constants.PKCE_METHOD_S256, OIDCAdvancedConfigWrapper.fromClientRepresentation(getClientByAdmin(cid)).getPkceCodeChallengeMethod());
 
             deleteExecutor("TestPKCEEnforceExecutor", policyName);
+            logger.info("... Deleted Executor : TestPKCEEnforceExecutor");
 
             updateClientByAdmin(cid, (ClientRepresentation clientRep) -> {
                 OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setPkceCodeChallengeMethod(null);
@@ -525,7 +526,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         logger.info("... Registered Condition : TestClientRolesCondition-alpha");
 
         createCondition("TestAuthnMethodsCondition-alpha", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API)));
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
         });
         registerCondition("TestAuthnMethodsCondition-alpha", policyAlphaName);
         logger.info("... Registered Condition : TestAuthnMethodsCondition-alpha");
@@ -588,7 +589,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         logger.info("... Created Policy : " + policyName);
 
         createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_ADMIN_REST_API)));
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
         });
         registerCondition("TestAuthnMethodsCondition", policyName);
         logger.info("... Registered Condition : TestAuthnMethodsCondition");
@@ -610,7 +611,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         logger.info("... Created Policy : " + policyName);
 
         createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_DYNAMIC_AUTHENTICATED)));
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_INITIAL_ACCESS_TOKEN)));
         });
         registerCondition("TestAuthnMethodsCondition", policyName);
         logger.info("... Registered Condition : TestAuthnMethodsCondition");
@@ -898,11 +899,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
-        provider.getConfig().putSingle(ClientPolicyExecutorProviderFactory.IS_AUGMENT, Boolean.TRUE.toString());
+        provider.getConfig().putSingle("is-augment", Boolean.TRUE.toString());
     }
 
     private void setExecutorAugmentDeactivate(ComponentRepresentation provider) {
-        provider.getConfig().putSingle(ClientPolicyExecutorProviderFactory.IS_AUGMENT, Boolean.FALSE.toString());
+        provider.getConfig().putSingle("is-augment", Boolean.FALSE.toString());
     }
 
     private void setExecutorAcceptedClientAuthMethods(ComponentRepresentation provider, List<String> acceptedClientAuthMethods) {

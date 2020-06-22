@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.impl;
+package org.keycloak.services.clientpolicy;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -56,7 +56,16 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
     @Override
     public List<ClientPolicyExecutorProvider> getExecutors() {
         return getExecutors(session.getContext().getRealm());
+    }
 
+    @Override
+    public String getName() {
+        return componentModel.getName();
+    }
+
+    @Override
+    public String getProviderId() {
+        return componentModel.getProviderId();
     }
 
     private List<String> getConditionIds() {
@@ -79,7 +88,7 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
                     ClientPolicyConditionProvider provider = session.getProvider(ClientPolicyConditionProvider.class, cm);
                     providers.add(provider);
                     session.enlistForClose(provider);
-                    ClientPolicyLogger.log(logger, new StringBuffer().append("Loaded Condition ID = ").append(conditionId).append(", Condition Name = ").append(cm.getName()).append(", Condition Provider ID = ").append(cm.getProviderId()).toString());
+                    ClientPolicyLogger.logv(logger, "Loaded Condition id = {0}, name = {1}, provider id = {2}", conditionId, cm.getName(), cm.getProviderId());
                 } catch (Throwable t) {
                     logger.errorv(t, "Failed to load condition {0}", cm.getId());
                 }
@@ -103,7 +112,7 @@ public class DefaultClientPolicyProvider implements ClientPolicyProvider {
                     ClientPolicyExecutorProvider provider = session.getProvider(ClientPolicyExecutorProvider.class, cm);
                     providers.add(provider);
                     session.enlistForClose(provider);
-                    ClientPolicyLogger.log(logger, new StringBuffer().append("Loaded Executor ID = ").append(executorId).append(", Executor Name = ").append(cm.getName()).append(", Executor Provider ID = ").append(cm.getProviderId()).toString());
+                    ClientPolicyLogger.logv(logger, "Loaded Executor id = {0}, name = {1}, provider id = {2}", executorId, cm.getName(), cm.getProviderId());
                 } catch (Throwable t) {
                     logger.errorv(t, "Failed to load executor {0}", cm.getId());
                 }

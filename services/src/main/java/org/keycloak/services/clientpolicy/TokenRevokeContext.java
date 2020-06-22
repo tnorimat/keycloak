@@ -15,26 +15,28 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.impl;
+package org.keycloak.services.clientpolicy;
 
-import org.jboss.logging.Logger;
+import javax.ws.rs.core.MultivaluedMap;
 
-public class ClientPolicyLogger {
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
+import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 
-    public static void log(Logger logger, String content) {
-        if(!logger.isTraceEnabled()) return;
-        String buf = new StringBuffer()
-            .append("#").append(getMethodName())
-            .append(", ").append(content)
-            .toString();
-        logger.trace(buf);
+public class TokenRevokeContext implements ClientPolicyContext {
+
+    private final MultivaluedMap<String, String> params;
+
+    public TokenRevokeContext(MultivaluedMap<String, String> params) {
+        this.params = params;
     }
 
-    private static String getClassName() {
-        return Thread.currentThread().getStackTrace()[2].getClassName();
+    @Override
+    public ClientPolicyEvent getEvent() {
+        return ClientPolicyEvent.TOKEN_REVOKE;
     }
 
-    private static String getMethodName() {
-        return Thread.currentThread().getStackTrace()[3].getMethodName();
+    public MultivaluedMap<String, String> getParams() {
+        return params;
     }
+
 }

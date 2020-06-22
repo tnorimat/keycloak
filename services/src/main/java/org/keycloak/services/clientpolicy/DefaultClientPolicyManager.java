@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.services.clientpolicy.impl;
+package org.keycloak.services.clientpolicy;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -48,16 +48,17 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
     @Override
     public void triggerOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         if (!Profile.isFeatureEnabled(Profile.Feature.CLIENT_POLICIES)) return;
-        ClientPolicyLogger.log(logger, "Client Policy Operation : event = " + context.getEvent());
+        ClientPolicyLogger.logv(logger, "Client Policy Operation : event = {0}", context.getEvent());
         doPolicyOperation(
                 (ClientPolicyConditionProvider condition) -> condition.isSatisfiedOnEvent(context),
                 (ClientPolicyExecutorProvider executor) -> executor.executeOnEvent(context)
-        );
+            );
     }
 
     private void doPolicyOperation(ClientConditionOperation condition, ClientExecutorOperation executor) throws ClientPolicyException {
         RealmModel realm = session.getContext().getRealm();
         for (ClientPolicyProvider policy : getProviders(realm)) {
+            ClientPolicyLogger.logv(logger, "Policy Operation : name = {0}, provider id = {1}", policy.getName(), policy.getProviderId());
             if (!isSatisfied(policy, condition)) continue;
             execute(policy, executor);
         }
@@ -71,7 +72,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
             for (ComponentModel policyModel : policyModels) {
                 try {
                     ClientPolicyProvider policy = session.getProvider(ClientPolicyProvider.class, policyModel);
-                    ClientPolicyLogger.log(logger, "Loaded Policy Name = " + policyModel.getName());
+                    ClientPolicyLogger.logv(logger, "Loaded Policy Name = {0}", policyModel.getName());
                     session.enlistForClose(policy);
                     providers.add(policy);
                 } catch (Throwable t) {
@@ -87,7 +88,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
 
     private boolean isSatisfied(
             ClientPolicyProvider policy,
-            ClientConditionOperation op) throws ClientPolicyException {
+            ClientConditionOperation op) {
 
         List<ClientPolicyConditionProvider> conditions = policy.getConditions();
 
@@ -100,14 +101,17 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
         for (ClientPolicyConditionProvider condition : conditions) {
             try {
                 if (!op.run(condition)) {
-                    ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. Not all conditones satisfied.");
+                    ClientPolicyLogger.logv(logger, "NEGATIVE :: This policy is not applied. condition not satisfied. name = {0}, provider id = {1}, ", condition.getName(), condition.getProviderId());
                     return false;
                 } else {
                     ret = true;
                 }
-            } catch (ClientPolicyException e) {
-                if (e.getError().equals(ClientPolicyConditionProvider.SKIP_EVALUATION)) continue;
-                ClientPolicyLogger.log(logger, "NEGATIVE :: This policy is not applied. " + e);
+            } catch (ClientPolicyException cpe) {
+                if (cpe.getError().equals(ClientPolicyConditionProvider.SKIP_EVALUATION)) {
+                    ClientPolicyLogger.logv(logger, "SKIP : This condition is not evaluated due to its nature. name = {0}, provider id = {1}", condition.getName(), condition.getProviderId());
+                    continue;
+                }
+                ClientPolicyLogger.logv(logger, "CONDITION EXCEPTION : name = {0}, provider id = {1}, error = {2}, error_detail = {3}", condition.getName(), condition.getProviderId(), cpe.getError(), cpe.getErrorDetail());
                 return false;
             }
         }
@@ -131,7 +135,14 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
             ClientPolicyLogger.log(logger, "NEGATIVE :: This executor is not executed. No executor executable.");
             return;
         }
-        for (ClientPolicyExecutorProvider executor : executors) op.run(executor);
+        for (ClientPolicyExecutorProvider executor : executors) {
+            try {
+                op.run(executor);
+            } catch(ClientPolicyException cpe) {
+                ClientPolicyLogger.logv(logger, "EXECUTOR EXCEPTION : name = {0}, provider id = {1}, error = {2}, error_detail = {3}", executor.getName(), executor.getProviderId(), cpe.getError(), cpe.getErrorDetail());
+                throw cpe;
+            }
+        }
 
     }
 
