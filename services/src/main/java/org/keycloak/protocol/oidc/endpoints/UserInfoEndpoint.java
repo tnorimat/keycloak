@@ -46,7 +46,6 @@ import org.keycloak.representations.AccessToken;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.Urls;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.DefaultClientPolicyManager;
 import org.keycloak.services.clientpolicy.UserInfoRequestContext;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
@@ -63,7 +62,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -135,7 +133,7 @@ public class UserInfoEndpoint {
     private Response issueUserInfo(String tokenString) {
 
         try {
-            session.clientPolicy().triggerOnEvent(new UserInfoRequestContext(request.getDecodedFormParameters()));
+            session.clientPolicy().triggerOnEvent(new UserInfoRequestContext(tokenString));
         } catch (ClientPolicyException cpe) {
             throw new ErrorResponseException(Errors.INVALID_REQUEST, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }

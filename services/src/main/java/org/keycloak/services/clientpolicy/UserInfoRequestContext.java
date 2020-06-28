@@ -17,17 +17,15 @@
 
 package org.keycloak.services.clientpolicy;
 
-import javax.ws.rs.core.MultivaluedMap;
-
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 
 public class UserInfoRequestContext implements ClientPolicyContext {
 
-    private final MultivaluedMap<String, String> params;
+    private final String tokenString;
 
-    public UserInfoRequestContext(MultivaluedMap<String, String> params) {
-        this.params = params;
+    public UserInfoRequestContext(String tokenString) {
+        this.tokenString = tokenString;
     }
 
     @Override
@@ -35,8 +33,8 @@ public class UserInfoRequestContext implements ClientPolicyContext {
         return ClientPolicyEvent.USERINFO_REQUEST;
     }
 
-    public MultivaluedMap<String, String> getParams() {
-        return params;
+    public String getTokenString() {
+        return tokenString;
     }
 
 }
