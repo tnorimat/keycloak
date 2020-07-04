@@ -55,12 +55,12 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
-import org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestClientRolesConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
@@ -90,8 +90,8 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         ClientInitialAccessPresentation token = adminClient.realm(REALM_NAME).clientInitialAccess().create(new ClientInitialAccessCreatePresentation(0, 10));
         reg.auth(Auth.token(token));
 
-        System.setProperty("keycloak.profile", "preview");
-        Profile.init();
+        //System.setProperty("keycloak.profile", "preview");
+        //Profile.init();
 
     }
 
@@ -99,8 +99,8 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     public void after() throws Exception {
         reg.close();
 
-        System.getProperties().remove("keycloak.profile");
-        Profile.init();
+        //System.getProperties().remove("keycloak.profile");
+        //Profile.init();
     }
 
     @Override
@@ -463,11 +463,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerCondition("TestClientRolesCondition", policyName);
         logger.info("... Registered Condition : TestClientRolesCondition");
 
-        createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER)));
         });
-        registerCondition("TestAuthnMethodsCondition", policyName);
-        logger.info("... Registered Condition : TestAuthnMethodsCondition");
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
 
         String clientId = "Zahlungs-App";
         String clientSecret = "secret";
@@ -526,11 +526,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerCondition("TestClientRolesCondition-alpha", policyAlphaName);
         logger.info("... Registered Condition : TestClientRolesCondition-alpha");
 
-        createCondition("TestAuthnMethodsCondition-alpha", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
+        createCondition("UpdatingClientSourceCondition-alpha", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER)));
         });
-        registerCondition("TestAuthnMethodsCondition-alpha", policyAlphaName);
-        logger.info("... Registered Condition : TestAuthnMethodsCondition-alpha");
+        registerCondition("UpdatingClientSourceCondition-alpha", policyAlphaName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition-alpha");
 
         createExecutor("TestClientAuthenticationExecutor-alpha", TestClientAuthenticationExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(ClientIdAndSecretAuthenticator.PROVIDER_ID)));
@@ -609,11 +609,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
 
-        createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER)));
         });
-        registerCondition("TestAuthnMethodsCondition", policyName);
-        logger.info("... Registered Condition : TestAuthnMethodsCondition");
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
 
         createExecutor("TestClientAuthenticationExecutor", TestClientAuthenticationExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(
@@ -631,11 +631,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
 
-        createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_INITIAL_ACCESS_TOKEN)));
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN)));
         });
-        registerCondition("TestAuthnMethodsCondition", policyName);
-        logger.info("... Registered Condition : TestAuthnMethodsCondition");
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
 
         createCondition("TestClientRolesCondition", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role")));
@@ -912,7 +912,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private void setConditionRegistrationMethods(ComponentRepresentation provider, List<String> registrationMethods) {
-        provider.getConfig().put(TestAuthnMethodsConditionFactory.AUTH_METHOD, registrationMethods);
+        provider.getConfig().put(UpdatingClientSourceConditionFactory.UPDATE_CLIENT_SOURCE, registrationMethods);
     }
 
     private void setConditionClientRoles(ComponentRepresentation provider, List<String> clientRoles) {

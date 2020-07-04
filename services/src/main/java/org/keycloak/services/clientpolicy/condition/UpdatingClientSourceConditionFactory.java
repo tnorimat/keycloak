@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.testsuite.services.clientpolicy.condition;
+package org.keycloak.services.clientpolicy.condition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,11 +29,11 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProviderFactory;
 
-public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionProviderFactory {
+public class UpdatingClientSourceConditionFactory implements ClientPolicyConditionProviderFactory {
 
-    public static final String PROVIDER_ID = "test-authnmethods-condition";
+    public static final String PROVIDER_ID = "update-client-source-condition";
 
-    public static final String AUTH_METHOD = "auth-method";
+    public static final String UPDATE_CLIENT_SOURCE = "update-client-source";
 
     public static final String BY_AUTHENTICATED_USER = "ByAuthenticatedUser";
     public static final String BY_ANONYMOUS = "ByAnonymous";
@@ -44,7 +44,7 @@ public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionPr
 
     static {
         ProviderConfigProperty property;
-        property = new ProviderConfigProperty(AUTH_METHOD, null, null, ProviderConfigProperty.MULTIVALUED_LIST_TYPE, BY_AUTHENTICATED_USER);
+        property = new ProviderConfigProperty(UPDATE_CLIENT_SOURCE, null, null, ProviderConfigProperty.MULTIVALUED_LIST_TYPE, BY_AUTHENTICATED_USER);
         List<String> updateProfileValues = Arrays.asList(BY_AUTHENTICATED_USER, BY_ANONYMOUS, BY_INITIAL_ACCESS_TOKEN, BY_REGISTRATION_ACCESS_TOKEN);
         property.setOptions(updateProfileValues);
         configProperties.add(property);
@@ -52,7 +52,7 @@ public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionPr
 
     @Override
     public ClientPolicyConditionProvider create(KeycloakSession session, ComponentModel model) {
-        return new TestAuthnMethodsCondition(session, model);
+        return new UpdatingClientSourceCondition(session, model);
     }
  
     @Override
@@ -74,7 +74,7 @@ public class TestAuthnMethodsConditionFactory implements ClientPolicyConditionPr
 
     @Override
     public String getHelpText() {
-        return null;
+        return "It uses the source of updating client to determine whether the policy is applied.";
     }
 
     @Override
