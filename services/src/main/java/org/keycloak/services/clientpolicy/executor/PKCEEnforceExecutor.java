@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.keycloak.testsuite.services.clientpolicy.executor;
+package org.keycloak.services.clientpolicy.executor;
 
 import java.security.MessageDigest;
 import java.util.regex.Matcher;
@@ -44,14 +44,14 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.TokenRequestContext;
 import org.keycloak.services.clientpolicy.executor.AbstractAugumentingClientRegistrationPolicyExecutor;
 
-public class TestPKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
+public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
 
-    private static final Logger logger = Logger.getLogger(TestPKCEEnforceExecutor.class);
+    private static final Logger logger = Logger.getLogger(PKCEEnforceExecutor.class);
 
     private static final Pattern VALID_CODE_CHALLENGE_PATTERN = Pattern.compile("^[0-9a-zA-Z\\-\\.~_]+$");
     private static final Pattern VALID_CODE_VERIFIER_PATTERN  = Pattern.compile("^[0-9a-zA-Z\\-\\.~_]+$");
 
-    public TestPKCEEnforceExecutor(KeycloakSession session, ComponentModel componentModel) {
+    public PKCEEnforceExecutor(KeycloakSession session, ComponentModel componentModel) {
         super(session, componentModel);
     }
 
