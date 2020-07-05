@@ -59,12 +59,12 @@ import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
-import org.keycloak.testsuite.services.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
 import org.keycloak.testsuite.util.OAuthClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -532,7 +532,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerCondition("UpdatingClientSourceCondition-alpha", policyAlphaName);
         logger.info("... Registered Condition : UpdatingClientSourceCondition-alpha");
 
-        createExecutor("TestClientAuthenticationExecutor-alpha", TestClientAuthenticationExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createExecutor("TestClientAuthenticationExecutor-alpha", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(ClientIdAndSecretAuthenticator.PROVIDER_ID)));
             setExecutorAugmentActivate(provider);
             setExecutorAugmentedClientAuthMethod(provider, ClientIdAndSecretAuthenticator.PROVIDER_ID);
@@ -615,7 +615,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerCondition("UpdatingClientSourceCondition", policyName);
         logger.info("... Registered Condition : UpdatingClientSourceCondition");
 
-        createExecutor("TestClientAuthenticationExecutor", TestClientAuthenticationExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createExecutor("TestClientAuthenticationExecutor", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(
                     JWTClientAuthenticator.PROVIDER_ID, JWTClientSecretAuthenticator.PROVIDER_ID, X509ClientAuthenticator.PROVIDER_ID)));
         });
@@ -643,7 +643,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerCondition("ClientRolesCondition", policyName);
         logger.info("... Registered Condition : ClientRolesCondition");
 
-        createExecutor("TestClientAuthenticationExecutor", TestClientAuthenticationExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createExecutor("TestClientAuthenticationExecutor", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(ClientIdAndSecretAuthenticator.PROVIDER_ID, JWTClientAuthenticator.PROVIDER_ID)));
             setExecutorAugmentedClientAuthMethod(provider, ClientIdAndSecretAuthenticator.PROVIDER_ID);
             setExecutorAugmentActivate(provider);
@@ -928,11 +928,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private void setExecutorAcceptedClientAuthMethods(ComponentRepresentation provider, List<String> acceptedClientAuthMethods) {
-        provider.getConfig().put(TestClientAuthenticationExecutorFactory.CLIENT_AUTHNS, acceptedClientAuthMethods);
+        provider.getConfig().put(SecureClientAuthEnforceExecutorFactory.CLIENT_AUTHNS, acceptedClientAuthMethods);
     }
 
     private void setExecutorAugmentedClientAuthMethod(ComponentRepresentation provider, String augmentedClientAuthMethod) {
-        provider.getConfig().putSingle(TestClientAuthenticationExecutorFactory.CLIENT_AUTHNS_AUGMENT, augmentedClientAuthMethod);
+        provider.getConfig().putSingle(SecureClientAuthEnforceExecutorFactory.CLIENT_AUTHNS_AUGMENT, augmentedClientAuthMethod);
     }
 
 }
