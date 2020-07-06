@@ -1,3 +1,20 @@
+/*
+ * Copyright 2020 Red Hat, Inc. and/or its affiliates
+ * and other contributors as indicated by the @author tags.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.keycloak.testsuite.client;
 
 import static org.junit.Assert.assertEquals;
@@ -54,6 +71,7 @@ import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
+import org.keycloak.services.clientpolicy.condition.ClientIpAddressConditionFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
@@ -604,6 +622,42 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testClientIpAddressCondition() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("ClientIpAddressCondition", ClientIpAddressConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionClientIpAddress(provider, new ArrayList<>(Arrays.asList("0.0.0.0", "127.0.0.1")));
+        });
+        registerCondition("ClientIpAddressCondition", policyName);
+        logger.info("... Registered Condition : ClientIpAddressCondition");
+
+        createExecutor("PKCEEnforceExecutor", PKCEEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setExecutorAugmentDeactivate(provider);
+        });
+        registerExecutor("PKCEEnforceExecutor", policyName);
+        logger.info("... Registered Executor : PKCEEnforceExecutor");
+
+        String clientId = "Zahlungs-App";
+        String clientSecret = "secret";
+        String cid = createClientByAdmin(clientId, (ClientRepresentation clientRep) -> {
+            clientRep.setSecret(clientSecret);
+        });
+
+        try { 
+            failTokenRequestByNotFollowingPKCE(clientId, clientSecret);
+
+            deleteExecutor("PKCEEnforceExecutor", policyName);
+            logger.info("... Deleted Executor : PKCEEnforceExecutor");
+
+            successfulLoginAndLogout(clientId, clientSecret);
+        } finally {
+            deleteClientByAdmin(cid);
+        }
+    }
+
     private void setupPolicyAcceptableAuthType(String policyName) {
 
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
@@ -678,8 +732,27 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     private void failLoginByNotFollowingPKCE(String clientId) {
         oauth.clientId(clientId);
         oauth.openLoginForm();
-        assertEquals("invalid_request", oauth.getCurrentQuery().get("error"));
-        assertEquals("Missing parameter: code_challenge_method", oauth.getCurrentQuery().get("error_description"));
+        assertEquals(OAuthErrorException.INVALID_REQUEST, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+        assertEquals("Missing parameter: code_challenge_method", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+    }
+
+    private void failTokenRequestByNotFollowingPKCE(String clientId, String clientSecret) {
+        oauth.clientId(clientId);
+        oauth.doLogin("test-user@localhost", "password");
+
+        EventRepresentation loginEvent = events.expectLogin().client(clientId).assertEvent();
+        String sessionId = loginEvent.getSessionId();
+        String codeId = loginEvent.getDetails().get(Details.CODE_ID);
+        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+        OAuthClient.AccessTokenResponse res = oauth.doAccessTokenRequest(code, clientSecret);
+
+        assertEquals(OAuthErrorException.INVALID_GRANT, res.getError());
+        assertEquals("PKCE code verifier not specified", res.getErrorDescription());
+        events.expect(EventType.CODE_TO_TOKEN_ERROR).client(clientId).session(sessionId).clearDetails().error(Errors.CODE_VERIFIER_MISSING).assertEvent();
+
+        oauth.openLogout();
+
+        events.expectLogout(sessionId).clearDetails().assertEvent();
     }
 
     private String generateS256CodeChallenge(String codeVerifier) throws Exception {
@@ -917,6 +990,10 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
     private void setConditionClientRoles(ComponentRepresentation provider, List<String> clientRoles) {
         provider.getConfig().put(ClientRolesConditionFactory.ROLES, clientRoles);
+    }
+
+    private void setConditionClientIpAddress(ComponentRepresentation provider, List<String> clientRoles) {
+        provider.getConfig().put(ClientIpAddressConditionFactory.IPADDR, clientRoles);
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
