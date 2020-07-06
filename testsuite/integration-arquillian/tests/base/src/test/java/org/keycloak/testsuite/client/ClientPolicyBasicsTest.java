@@ -74,6 +74,7 @@ import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.ClientIpAddressConditionFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
+import org.keycloak.services.clientpolicy.condition.ClientScopesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
@@ -701,6 +702,40 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testClientScopesCondition() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("ClientScopesCondition", ClientScopesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        	setConditionClientScopes(provider, new ArrayList<>(Arrays.asList("offline_access", "microprofile-jwt")));
+        });
+        registerCondition("ClientScopesCondition", policyName);
+        logger.info("... Registered Condition : ClientScopesCondition");
+
+        createExecutor("SecureSessionEnforceExecutor", SecureSessionEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        });
+        registerExecutor("SecureSessionEnforceExecutor", policyName);
+        logger.info("... Registered Executor : SecureSessionEnforceExecutor");
+
+        String clientAlphaId = "Alpha-App";
+        String clientAlphaSecret = "secretAlpha";
+        String cAlphaId = createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
+            clientRep.setSecret(clientAlphaSecret);
+        });
+
+        try {
+            successfulLoginAndLogout(clientAlphaId, clientAlphaSecret);
+
+            oauth.scope("offline_access");
+            failLoginWithoutNonce(clientAlphaId);
+
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+    }
+
     private void setupPolicyAcceptableAuthType(String policyName) {
 
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
@@ -1042,8 +1077,12 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         provider.getConfig().put(ClientRolesConditionFactory.ROLES, clientRoles);
     }
 
-    private void setConditionClientIpAddress(ComponentRepresentation provider, List<String> clientRoles) {
-        provider.getConfig().put(ClientIpAddressConditionFactory.IPADDR, clientRoles);
+    private void setConditionClientIpAddress(ComponentRepresentation provider, List<String> clientIpAddresses) {
+        provider.getConfig().put(ClientIpAddressConditionFactory.IPADDR, clientIpAddresses);
+    }
+
+    private void setConditionClientScopes(ComponentRepresentation provider, List<String> clientScopes) {
+        provider.getConfig().put(ClientScopesConditionFactory.SCOPES, clientScopes);
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
