@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -53,10 +54,12 @@ import org.keycloak.client.registration.ClientRegistrationException;
 import org.keycloak.common.Profile;
 import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.crypto.Algorithm;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
+import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.RefreshToken;
@@ -80,6 +83,8 @@ import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutor;
+import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutorFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -733,6 +738,71 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
         } finally {
             deleteClientByAdmin(cAlphaId);
+        }
+    }
+
+    @Test
+    public void testSecureSigningAlgorithmEnforceExecutor() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(
+                    UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                    UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                    UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN)));
+        });
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("SecureSigningAlgorithmEnforceExecutor", SecureSigningAlgorithmEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        });
+        registerExecutor("SecureSigningAlgorithmEnforceExecutor", policyName);
+        logger.info("... Registered Executor : SecureSigningAlgorithmEnforceExecutor");
+
+        String clientId = null;
+        String cAlphaId = null;
+        try {
+            clientId = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
+                clientRep.setUserinfoSignedResponseAlg(Algorithm.ES256);
+                clientRep.setRequestObjectSigningAlg(Algorithm.ES256);
+                clientRep.setIdTokenSignedResponseAlg(Algorithm.PS256);
+                clientRep.setTokenEndpointAuthSigningAlg(Algorithm.PS256);
+            });
+            events.expect(EventType.CLIENT_REGISTER).client(clientId).user(Matchers.isEmptyOrNullString()).assertEvent();
+            getClientDynamically(clientId);
+
+            cAlphaId = createClientByAdmin("Alpha-App", (ClientRepresentation clientRep) -> {
+                clientRep.setAttributes(new HashMap<>());
+                clientRep.getAttributes().put(OIDCConfigAttributes.USER_INFO_RESPONSE_SIGNATURE_ALG, Algorithm.PS256);
+                clientRep.getAttributes().put(OIDCConfigAttributes.REQUEST_OBJECT_SIGNATURE_ALG, Algorithm.ES256);
+                clientRep.getAttributes().put(OIDCConfigAttributes.ID_TOKEN_SIGNED_RESPONSE_ALG, Algorithm.ES256);
+                clientRep.getAttributes().put(OIDCConfigAttributes.ACCESS_TOKEN_SIGNED_RESPONSE_ALG, Algorithm.ES256);
+                clientRep.getAttributes().put(OIDCConfigAttributes.TOKEN_ENDPOINT_AUTH_SIGNING_ALG, Algorithm.ES256);
+            });
+
+            try {
+                createClientByAdmin("Beta-App", (ClientRepresentation clientRep) -> {
+                    clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role-beta").toArray(new String[1]));
+                    clientRep.setSecret("secretBeta");
+                });
+                fail();
+            } catch (ClientPolicyException e) {
+                assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+            }
+
+           try {
+                updateClientDynamically(clientId, (OIDCClientRepresentation clientRep) -> {
+                    clientRep.setIdTokenSignedResponseAlg(Algorithm.RS256);
+                });
+               fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+            deleteClientDynamically(clientId);
         }
     }
 
