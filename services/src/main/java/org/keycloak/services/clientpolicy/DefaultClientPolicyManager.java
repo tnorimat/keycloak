@@ -50,7 +50,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
         if (!Profile.isFeatureEnabled(Profile.Feature.CLIENT_POLICIES)) return;
         ClientPolicyLogger.logv(logger, "Client Policy Operation : event = {0}", context.getEvent());
         doPolicyOperation(
-                (ClientPolicyConditionProvider condition) -> condition.isSatisfiedOnEvent(context),
+                (ClientPolicyConditionProvider condition) -> condition.applyPolicy(context),
                 (ClientPolicyExecutorProvider executor) -> executor.executeOnEvent(context)
             );
     }
@@ -100,17 +100,16 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
         boolean ret = false;
         for (ClientPolicyConditionProvider condition : conditions) {
             try {
-                if (!op.run(condition)) {
-                    ClientPolicyLogger.logv(logger, "NEGATIVE :: This policy is not applied. condition not satisfied. name = {0}, provider id = {1}, ", condition.getName(), condition.getProviderId());
-                    return false;
-                } else {
-                    ret = true;
-                }
-            } catch (ClientPolicyException cpe) {
-                if (cpe.getError().equals(ClientPolicyConditionProvider.SKIP_EVALUATION)) {
+                if (op.run(condition) == ClientPolicyVote.ABSTAIN) {
                     ClientPolicyLogger.logv(logger, "SKIP : This condition is not evaluated due to its nature. name = {0}, provider id = {1}", condition.getName(), condition.getProviderId());
                     continue;
                 }
+                if (op.run(condition) == ClientPolicyVote.NO) {
+                    ClientPolicyLogger.logv(logger, "NEGATIVE :: This policy is not applied. condition not satisfied. name = {0}, provider id = {1}, ", condition.getName(), condition.getProviderId());
+                    return false;
+                }
+                ret = true;
+            } catch (ClientPolicyException cpe) {
                 ClientPolicyLogger.logv(logger, "CONDITION EXCEPTION : name = {0}, provider id = {1}, error = {2}, error_detail = {3}", condition.getName(), condition.getProviderId(), cpe.getError(), cpe.getErrorDetail());
                 return false;
             }
@@ -147,7 +146,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
     }
 
     private interface ClientConditionOperation {
-        boolean run(ClientPolicyConditionProvider condition) throws ClientPolicyException;
+        ClientPolicyVote run(ClientPolicyConditionProvider condition) throws ClientPolicyException;
     }
 
     private interface ClientExecutorOperation {

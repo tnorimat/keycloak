@@ -21,6 +21,7 @@ import org.keycloak.provider.Provider;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientPolicyVote;
 
 /**
  * This condition determines to which client a {@link ClientPolicyProvider} is adopted.
@@ -37,14 +38,16 @@ public interface ClientPolicyConditionProvider extends Provider {
     }
 
     /**
-     * returns true if the client satisfies this condition on the event defined in {@link ClientPolicyEvent}.
+     * returns ABSTAIN if this condition is not evaluated due to its nature.
+     * returns YES if the client satisfies this condition on the event defined in {@link ClientPolicyEvent}.
+     * If not, returns NO.
      *
      * @param context - the context of the event.
-     * @return true if the client satisfies this condition.
+     * @return returns ABSTAIN if this condition is not evaluated due to its nature.
      * @throws {@link ClientPolicyException} - thrown if the condition is not evaluated in its nature on the event specified by context.
      */
-    default boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
-        return true;
+    default ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
+        return ClientPolicyVote.ABSTAIN;
     }
 
     String getName();

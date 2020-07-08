@@ -24,6 +24,7 @@ import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
+import org.keycloak.services.clientpolicy.ClientPolicyVote;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientregistration.ClientRegistrationTokenUtils;
@@ -42,13 +43,14 @@ public class TestAuthnMethodsCondition implements ClientPolicyConditionProvider 
     }
 
     @Override
-    public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+    public ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
         case REGISTER:
         case UPDATE:
-            return isAuthMethodMatched((ClientUpdateContext)context);
+            if (isAuthMethodMatched((ClientUpdateContext)context)) return ClientPolicyVote.YES;
+            return ClientPolicyVote.NO;
         default:
-            throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
+            return ClientPolicyVote.ABSTAIN;
         }
     }
 

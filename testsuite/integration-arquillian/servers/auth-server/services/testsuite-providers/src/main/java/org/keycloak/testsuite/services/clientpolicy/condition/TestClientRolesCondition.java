@@ -26,6 +26,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
+import org.keycloak.services.clientpolicy.ClientPolicyVote;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 
 public class TestClientRolesCondition implements ClientPolicyConditionProvider {
@@ -41,7 +42,7 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
     }
 
     @Override
-    public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+    public ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
             case AUTHORIZATION_REQUEST:
             case TOKEN_REQUEST:
@@ -50,9 +51,10 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
             case TOKEN_INTROSPECT:
             case USERINFO_REQUEST:
             case LOGOUT_REQUEST:
-                return isRolesMatched(session.getContext().getClient());
+                if (isRolesMatched(session.getContext().getClient())) return ClientPolicyVote.YES;
+                return ClientPolicyVote.NO;
             default:
-                throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
+                return ClientPolicyVote.ABSTAIN;
         }
     }
 
