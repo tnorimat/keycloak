@@ -80,6 +80,7 @@ import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvide
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.ClientScopesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
@@ -888,6 +889,36 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testUpdatingClientSourceHostsCondition() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceHostsCondition", UpdatingClientSourceHostsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setUpdatingClientSourceHosts(provider, new ArrayList<>(Arrays.asList("example.com", "localhost:8543")));
+        });
+        registerCondition("UpdatingClientSourceHostsCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceHostsCondition");
+
+        createExecutor("PKCEEnforceExecutor", PKCEEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setExecutorAugmentDeactivate(provider);
+        });
+        registerExecutor("PKCEEnforceExecutor", policyName);
+        logger.info("... Registered Executor : PKCEEnforceExecutor");
+
+        String clientAlphaId = "Alpha-App";
+        String clientAlphaSecret = "secretAlpha";
+        try {
+            createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
+                clientRep.setSecret(clientAlphaSecret);
+            });
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+        }
+    }
+
     private void setupPolicyAcceptableAuthType(String policyName) {
 
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
@@ -1246,6 +1277,10 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
     private void setConditionClientAccessType(ComponentRepresentation provider, List<String> clientAccessTypes) {
         provider.getConfig().put(ClientAccessTypeConditionFactory.TYPE, clientAccessTypes);
+    }
+
+    private void setUpdatingClientSourceHosts(ComponentRepresentation provider, List<String> hosts) {
+        provider.getConfig().put(UpdatingClientSourceHostsConditionFactory.HOSTS, hosts);
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
