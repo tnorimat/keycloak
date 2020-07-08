@@ -83,6 +83,7 @@ import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditio
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.SecureResponseTypeEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutorFactory;
@@ -847,6 +848,46 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testSecureResponseTypeEnforceExecutor() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("ClientAccessTypeCondition", ClientAccessTypeConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionClientAccessType(provider, new ArrayList<>(Arrays.asList(ClientAccessTypeConditionFactory.TYPE_CONFIDENTIAL)));
+        });
+        registerCondition("ClientAccessTypeCondition", policyName);
+        logger.info("... Registered Condition : ClientAccessTypeCondition");
+
+        createExecutor("SecureResponseTypeEnforceExecutor", SecureResponseTypeEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        });
+        registerExecutor("SecureResponseTypeEnforceExecutor", policyName);
+        logger.info("... Registered Executor : SecureResponseTypeEnforceExecutor");
+
+        String clientAlphaId = "Alpha-App";
+        String clientAlphaSecret = "secretAlpha";
+        String cAlphaId = createClientByAdmin(clientAlphaId, (ClientRepresentation clientRep) -> {
+            clientRep.setSecret(clientAlphaSecret);
+            clientRep.setBearerOnly(Boolean.FALSE);
+            clientRep.setPublicClient(Boolean.FALSE);
+        });
+
+        String clientBetaId = "Beta-App";
+        String cBetaId = createClientByAdmin(clientBetaId, (ClientRepresentation clientRep) -> {
+            clientRep.setBearerOnly(Boolean.FALSE);
+            clientRep.setPublicClient(Boolean.TRUE);
+        });
+
+        try {
+            successfulLoginAndLogout(clientBetaId, null);
+            failLoginWithoutSecureResponseType(clientAlphaId);
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+            deleteClientByAdmin(cBetaId);
+        }
+    }
+
     private void setupPolicyAcceptableAuthType(String policyName) {
 
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
@@ -916,6 +957,13 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
         oauth.doLogout(res.getRefreshToken(), clientSecret);
         events.expectLogout(sessionId).client(clientId).clearDetails().assertEvent();
+    }
+
+    private void failLoginWithoutSecureResponseType(String clientId) {
+        oauth.clientId(clientId);
+        oauth.openLoginForm();
+        assertEquals(OAuthErrorException.INVALID_REQUEST, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+        assertEquals("invalid response_type", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
     }
 
     private void failLoginWithoutNonce(String clientId) {
