@@ -88,7 +88,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
 
     private boolean isSatisfied(
             ClientPolicyProvider policy,
-            ClientConditionOperation op) {
+            ClientConditionOperation op) throws ClientPolicyException {
 
         List<ClientPolicyConditionProvider> conditions = policy.getConditions();
 
@@ -111,7 +111,7 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
                 ret = true;
             } catch (ClientPolicyException cpe) {
                 ClientPolicyLogger.logv(logger, "CONDITION EXCEPTION : name = {0}, provider id = {1}, error = {2}, error_detail = {3}", condition.getName(), condition.getProviderId(), cpe.getError(), cpe.getErrorDetail());
-                return false;
+                throw cpe;
             }
         }
 

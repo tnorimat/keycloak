@@ -31,8 +31,6 @@ import org.keycloak.services.clientpolicy.ClientPolicyVote;
  */
 public interface ClientPolicyConditionProvider extends Provider {
 
-    final String SKIP_EVALUATION = "skip-evaluation";
-
     @Override
     default void close() {
     }

@@ -62,6 +62,7 @@ import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestClientRolesConditionFactory;
+import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
 import org.keycloak.testsuite.services.clientpolicy.executor.TestPKCEEnforceExecutorFactory;
 import org.keycloak.testsuite.util.OAuthClient;
@@ -580,6 +581,26 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         } finally {
             deleteClientByAdmin(cAlphaId);
             deleteClientByAdmin(cBetaId);
+        }
+    }
+
+    @Test
+    public void testIntentionalExceptionOnCondition() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("TestRaiseExeptionCondition", TestRaiseExeptionConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        });
+        registerCondition("TestRaiseExeptionCondition", policyName);
+        logger.info("... Registered Condition : TestRaiseExeptionCondition-beta");
+
+        try {
+            createClientByAdmin("Zahlungs-App", (ClientRepresentation clientRep) -> {
+            });
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
         }
     }
 
