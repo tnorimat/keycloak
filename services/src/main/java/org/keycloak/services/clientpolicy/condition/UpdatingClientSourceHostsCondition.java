@@ -23,6 +23,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
+import org.keycloak.services.clientpolicy.ClientPolicyVote;
 
 public class UpdatingClientSourceHostsCondition implements ClientPolicyConditionProvider {
 
@@ -47,16 +48,17 @@ public class UpdatingClientSourceHostsCondition implements ClientPolicyCondition
     }
 
     @Override
-    public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+    public ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
         case REGISTER:
         case UPDATE:
-            return isHostMatched();
+            if (isHostMatched()) return ClientPolicyVote.YES;
+            return ClientPolicyVote.NO;
         default:
-            throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
+            return ClientPolicyVote.ABSTAIN;
         }
     }
-    
+
     private boolean isHostMatched() {
         String host = session.getContext().getRequestHeaders().getHeaderString("Host");
 

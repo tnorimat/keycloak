@@ -24,6 +24,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
+import org.keycloak.services.clientpolicy.ClientPolicyVote;
 
 public class ClientIpAddressCondition implements ClientPolicyConditionProvider {
 
@@ -48,7 +49,7 @@ public class ClientIpAddressCondition implements ClientPolicyConditionProvider {
     }
 
     @Override
-    public boolean isSatisfiedOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+    public ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
             case TOKEN_REQUEST:
             case TOKEN_REFRESH:
@@ -56,9 +57,10 @@ public class ClientIpAddressCondition implements ClientPolicyConditionProvider {
             case TOKEN_INTROSPECT:
             case USERINFO_REQUEST:
             case LOGOUT_REQUEST:
-                return isIpAddressMathced();
+                if (isIpAddressMathced()) return ClientPolicyVote.YES;
+                return ClientPolicyVote.NO;
             default:
-                throw new ClientPolicyException(ClientPolicyConditionProvider.SKIP_EVALUATION, "");
+                return ClientPolicyVote.ABSTAIN;
         }
     }
 
