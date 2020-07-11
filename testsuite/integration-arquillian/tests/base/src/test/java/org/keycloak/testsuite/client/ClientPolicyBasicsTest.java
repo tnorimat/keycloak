@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -58,6 +59,8 @@ import org.keycloak.crypto.Algorithm;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
+import org.keycloak.models.AdminRoles;
+import org.keycloak.models.Constants;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
@@ -67,8 +70,11 @@ import org.keycloak.representations.idm.ClientInitialAccessCreatePresentation;
 import org.keycloak.representations.idm.ClientInitialAccessPresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ComponentRepresentation;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.EventRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -80,13 +86,14 @@ import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvide
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.ClientScopesConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsCondition;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureResponseTypeEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory;
-import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutorFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
@@ -134,6 +141,34 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     @Override
     public void addTestRealms(List<RealmRepresentation> testRealms) {
         RealmRepresentation realm = loadJson(getClass().getResourceAsStream("/testrealm.json"), RealmRepresentation.class);
+
+        List<UserRepresentation> users = realm.getUsers();
+
+        LinkedList<CredentialRepresentation> credentials = new LinkedList<>();
+        CredentialRepresentation password = new CredentialRepresentation();
+        password.setType(CredentialRepresentation.PASSWORD);
+        password.setValue("password");
+        credentials.add(password);
+
+        UserRepresentation user = new UserRepresentation();
+        user.setEnabled(true);
+        user.setUsername("manage-clients");
+        user.setCredentials(credentials);
+        user.setClientRoles(Collections.singletonMap(Constants.REALM_MANAGEMENT_CLIENT_ID, Collections.singletonList(AdminRoles.MANAGE_CLIENTS)));
+
+        users.add(user);
+
+        user = new UserRepresentation();
+        user.setEnabled(true);
+        user.setUsername("create-clients");
+        user.setCredentials(credentials);
+        user.setClientRoles(Collections.singletonMap(Constants.REALM_MANAGEMENT_CLIENT_ID, Collections.singletonList(AdminRoles.CREATE_CLIENT)));
+        user.setGroups(Arrays.asList("topGroup")); // defined in testrealm.json
+
+        users.add(user);
+
+        realm.setUsers(users);
+
         testRealms.add(realm);
     }
 
@@ -896,7 +931,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         logger.info("... Created Policy : " + policyName);
 
         createCondition("UpdatingClientSourceHostsCondition", UpdatingClientSourceHostsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setUpdatingClientSourceHosts(provider, new ArrayList<>(Arrays.asList("example.com", "localhost:8543")));
+            setConditionUpdatingClientSourceHosts(provider, new ArrayList<>(Arrays.asList("example.com", "localhost:8543")));
         });
         registerCondition("UpdatingClientSourceHostsCondition", policyName);
         logger.info("... Registered Condition : UpdatingClientSourceHostsCondition");
@@ -916,6 +951,42 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             fail();
         } catch (ClientPolicyException e) {
             assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+        }
+    }
+
+    @Test
+    public void testUpdatingClientSourceGroupsCondition() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceGroupsCondition", UpdatingClientSourceGroupsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionUpdatingClientSourceGroups(provider, new ArrayList<>(Arrays.asList("topGroup")));
+        });
+        registerCondition("UpdatingClientSourceGroupsCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceGroupsCondition");
+
+        createExecutor("SecureClientAuthEnforceExecutor", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(JWTClientAuthenticator.PROVIDER_ID)));
+        });
+        registerExecutor("SecureClientAuthEnforceExecutor", policyName);
+        logger.info("... Registered Executor : SecureClientAuthEnforceExecutor");
+
+        String cid = null;
+        try {
+            try {
+                authCreateClients();
+                createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {});
+                fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+            authManageClients();
+            cid = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
+            });
+        } finally {
+            deleteClientByAdmin(cid);
+
         }
     }
 
@@ -1279,8 +1350,12 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         provider.getConfig().put(ClientAccessTypeConditionFactory.TYPE, clientAccessTypes);
     }
 
-    private void setUpdatingClientSourceHosts(ComponentRepresentation provider, List<String> hosts) {
+    private void setConditionUpdatingClientSourceHosts(ComponentRepresentation provider, List<String> hosts) {
         provider.getConfig().put(UpdatingClientSourceHostsConditionFactory.HOSTS, hosts);
+    }
+
+    private void setConditionUpdatingClientSourceGroups(ComponentRepresentation provider, List<String> groups) {
+        provider.getConfig().put(UpdatingClientSourceGroupsConditionFactory.GROUPS, groups);
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
@@ -1299,4 +1374,23 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         provider.getConfig().putSingle(SecureClientAuthEnforceExecutorFactory.CLIENT_AUTHNS_AUGMENT, augmentedClientAuthMethod);
     }
 
+    void authCreateClients() {
+        reg.auth(Auth.token(getToken("create-clients", "password")));
+    }
+
+    void authManageClients() {
+        reg.auth(Auth.token(getToken("manage-clients", "password")));
+    }
+
+    void authNoAccess() {
+        reg.auth(Auth.token(getToken("no-access", "password")));
+    }
+
+    private String getToken(String username, String password) {
+        try {
+            return oauth.doGrantAccessTokenRequest(REALM_NAME, username, password, null, Constants.ADMIN_CLI_CLIENT_ID, null).getAccessToken();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

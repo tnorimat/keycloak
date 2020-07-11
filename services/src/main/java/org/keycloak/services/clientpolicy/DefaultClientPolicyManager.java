@@ -100,11 +100,11 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
         boolean ret = false;
         for (ClientPolicyConditionProvider condition : conditions) {
             try {
-                if (op.run(condition) == ClientPolicyVote.ABSTAIN) {
+                ClientPolicyVote vote = op.run(condition);
+                if (vote == ClientPolicyVote.ABSTAIN) {
                     ClientPolicyLogger.logv(logger, "SKIP : This condition is not evaluated due to its nature. name = {0}, provider id = {1}", condition.getName(), condition.getProviderId());
                     continue;
-                }
-                if (op.run(condition) == ClientPolicyVote.NO) {
+                } else if (vote == ClientPolicyVote.NO) {
                     ClientPolicyLogger.logv(logger, "NEGATIVE :: This policy is not applied. condition not satisfied. name = {0}, provider id = {1}, ", condition.getName(), condition.getProviderId());
                     return false;
                 }

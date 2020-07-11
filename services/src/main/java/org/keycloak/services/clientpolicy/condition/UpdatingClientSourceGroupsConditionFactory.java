@@ -26,22 +26,22 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
 
-public class UpdatingClientSourceHostsConditionFactory implements ClientPolicyConditionProviderFactory {
+public class UpdatingClientSourceGroupsConditionFactory implements ClientPolicyConditionProviderFactory {
 
-    public static final String PROVIDER_ID = "updateclientsource-host-condition";
-    public static final String HOSTS = "hosts";
+    public static final String PROVIDER_ID = "updateclientsource-groups-condition";
+    public static final String GROUPS = "groups";
 
     private static final List<ProviderConfigProperty> configProperties = new ArrayList<ProviderConfigProperty>();
 
     static {
         ProviderConfigProperty property;
-        property = new ProviderConfigProperty(HOSTS, PROVIDER_ID + ".label", PROVIDER_ID + ".tooltip", ProviderConfigProperty.MULTIVALUED_STRING_TYPE, "localhost");
+        property = new ProviderConfigProperty(GROUPS, PROVIDER_ID + ".label", PROVIDER_ID + ".tooltip", ProviderConfigProperty.MULTIVALUED_STRING_TYPE, "topGroup");
         configProperties.add(property);
     }
 
     @Override
     public ClientPolicyConditionProvider create(KeycloakSession session, ComponentModel model) {
-        return new UpdatingClientSourceHostsCondition(session, model);
+        return new UpdatingClientSourceGroupsCondition(session, model);
     }
 
     @Override
@@ -63,7 +63,7 @@ public class UpdatingClientSourceHostsConditionFactory implements ClientPolicyCo
 
     @Override
     public String getHelpText() {
-        return "It uses the host of the source of updating client to determine whether the policy is applied.";
+        return "It uses the groups to which the source user of updating client to determine whether the policy is applied.";
     }
 
     @Override

@@ -31,7 +31,7 @@ import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvide
 
 public class UpdatingClientSourceConditionFactory implements ClientPolicyConditionProviderFactory {
 
-    public static final String PROVIDER_ID = "update-client-source-condition";
+    public static final String PROVIDER_ID = "updateclientsource-condition";
 
     public static final String UPDATE_CLIENT_SOURCE = "update-client-source";
 
