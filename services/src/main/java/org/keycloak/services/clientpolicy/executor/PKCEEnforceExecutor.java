@@ -99,8 +99,13 @@ public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPo
             throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "Missing parameter: code_challenge_method");
         }
 
+        // check whether acceptable code challenge method is specified
+        if (!isAcceptableCodeChallengeMethod(codeChallengeMethod)) {
+            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "Invalid parameter: invalid code_challenge_method");
+        }
+
         // check whether specified code challenge method is configured one in advance
-        if (!codeChallengeMethod.equals(pkceCodeChallengeMethod)) {
+        if (pkceCodeChallengeMethod != null && !codeChallengeMethod.equals(pkceCodeChallengeMethod)) {
             throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "Invalid parameter: code challenge method is not configured one");
         }
 
@@ -116,16 +121,9 @@ public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPo
 
     }
 
-    private void executeOnTokenRequest(
-            MultivaluedMap<String, String> params,
-            OAuth2CodeParser.ParseResult parseResult) throws ClientPolicyException {
-        String codeVerifier = params.getFirst(OAuth2Constants.CODE_VERIFIER);
-        OAuth2Code codeData = parseResult.getCodeData();
-        String codeChallenge = codeData.getCodeChallenge();
-        String codeChallengeMethod = codeData.getCodeChallengeMethod();
-
-        checkParamsForPkceEnforcedClient(codeVerifier, codeChallenge, codeChallengeMethod);
-    };
+    private boolean isAcceptableCodeChallengeMethod(String method) {
+        return OAuth2Constants.PKCE_METHOD_S256.equals(method);
+     }
 
     private boolean isValidPkceCodeChallenge(String codeChallenge) {
         if (codeChallenge.length() < OIDCLoginProtocol.PKCE_CODE_CHALLENGE_MIN_LENGTH) {
@@ -138,6 +136,17 @@ public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPo
         return m.matches();
     }
 
+    private void executeOnTokenRequest(
+            MultivaluedMap<String, String> params,
+            OAuth2CodeParser.ParseResult parseResult) throws ClientPolicyException {
+        String codeVerifier = params.getFirst(OAuth2Constants.CODE_VERIFIER);
+        OAuth2Code codeData = parseResult.getCodeData();
+        String codeChallenge = codeData.getCodeChallenge();
+        String codeChallengeMethod = codeData.getCodeChallengeMethod();
+
+        checkParamsForPkceEnforcedClient(codeVerifier, codeChallenge, codeChallengeMethod);
+    };
+
     private void checkParamsForPkceEnforcedClient(String codeVerifier, String codeChallenge, String codeChallengeMethod) throws ClientPolicyException {
         // check whether code verifier is specified
         if (codeVerifier == null) {
@@ -145,7 +154,6 @@ public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPo
         }
         verifyCodeVerifier(codeVerifier, codeChallenge, codeChallengeMethod);
     }
-
 
     private void verifyCodeVerifier(String codeVerifier, String codeChallenge, String codeChallengeMethod) throws ClientPolicyException {
         // check whether code verifier is formatted along with the PKCE specification
