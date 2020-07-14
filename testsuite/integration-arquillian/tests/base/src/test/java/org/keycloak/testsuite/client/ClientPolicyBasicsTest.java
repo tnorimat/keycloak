@@ -93,6 +93,7 @@ import org.keycloak.services.clientpolicy.condition.ClientScopesConditionFactory
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
@@ -952,6 +953,42 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testUpdatingClientSourceRolesCondition() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceRolesCondition", UpdatingClientSourceRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionUpdatingClientSourceRoles(provider, new ArrayList<>(Arrays.asList(AdminRoles.CREATE_CLIENT)));
+        });
+        registerCondition("UpdatingClientSourceRolesCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceRolesCondition");
+
+        createExecutor("SecureClientAuthEnforceExecutor", SecureClientAuthEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(JWTClientAuthenticator.PROVIDER_ID)));
+        });
+        registerExecutor("SecureClientAuthEnforceExecutor", policyName);
+        logger.info("... Registered Executor : SecureClientAuthEnforceExecutor");
+
+        String cid = null;
+        try {
+            try {
+                authCreateClients();
+                createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {});
+                fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+            authManageClients();
+            cid = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
+            });
+        } finally {
+            deleteClientByAdmin(cid);
+
+        }
+    }
+
     private void setupPolicyAcceptableAuthType(String policyName) {
 
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
@@ -1370,6 +1407,10 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
     private void setConditionUpdatingClientSourceGroups(ComponentRepresentation provider, List<String> groups) {
         provider.getConfig().put(UpdatingClientSourceGroupsConditionFactory.GROUPS, groups);
+    }
+
+    private void setConditionUpdatingClientSourceRoles(ComponentRepresentation provider, List<String> groups) {
+        provider.getConfig().put(UpdatingClientSourceRolesConditionFactory.ROLES, groups);
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
