@@ -97,6 +97,7 @@ import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesCon
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.services.clientpolicy.executor.PKCEEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFactory;
+import org.keycloak.services.clientpolicy.executor.SecureRedirectUriEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureResponseTypeEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutorFactory;
@@ -986,6 +987,48 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         } finally {
             deleteClientByAdmin(cid);
 
+        }
+    }
+
+    @Test
+    public void testSecureRedirectUriEnforceExecutor() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(
+                    UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                    UpdatingClientSourceConditionFactory.BY_INITIAL_ACCESS_TOKEN,
+                    UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN)));
+        });
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("SecureRedirectUriEnforceExecutor", SecureRedirectUriEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        });
+        registerExecutor("SecureRedirectUriEnforceExecutor", policyName);
+        logger.info("... Registered Executor : SecureRedirectUriEnforceExecutor");
+
+        String cid = null;
+        try {
+            try {
+                createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
+                    clientRep.setRedirectUris(Collections.singletonList("http://newredirect"));
+                });
+                fail();
+            } catch (ClientRegistrationException e) {
+                assertEquals("Failed to send request", e.getMessage());
+            }
+            updateCondition("UpdatingClientSourceCondition", (ComponentRepresentation provider) -> {
+                setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(
+                        UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER,
+                        UpdatingClientSourceConditionFactory.BY_REGISTRATION_ACCESS_TOKEN)));
+            });
+            cid = createClientDynamically("Gourmet-App", (OIDCClientRepresentation clientRep) -> {
+            });
+        } finally {
+            deleteClientByAdmin(cid);
         }
     }
 

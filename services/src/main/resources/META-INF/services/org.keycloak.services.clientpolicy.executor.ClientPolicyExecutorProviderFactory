@@ -3,3 +3,4 @@ org.keycloak.services.clientpolicy.executor.SecureClientAuthEnforceExecutorFacto
 org.keycloak.services.clientpolicy.executor.SecureSessionEnforceExecutorFactory
 org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmEnforceExecutorFactory
 org.keycloak.services.clientpolicy.executor.SecureResponseTypeEnforceExecutorFactory
+org.keycloak.services.clientpolicy.executor.SecureRedirectUriEnforceExecutorFactory
