@@ -59,6 +59,7 @@ import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
 import org.keycloak.exportimport.ExportImportConfig;
 import org.keycloak.exportimport.singlefile.SingleFileExportProviderFactory;
+import org.keycloak.jose.jws.Algorithm;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
@@ -77,10 +78,12 @@ import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
+import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutorFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
+import org.keycloak.testsuite.client.resources.TestOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
@@ -586,6 +589,56 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
     }
 
+    @Test
+    public void testSecureRequestObjectExecutor() throws ClientRegistrationException, ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("ClientRolesCondition", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role")));
+        });
+        registerCondition("ClientRolesCondition", policyName);
+        logger.info("... Registered Condition : ClientRolesCondition");
+
+        createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
+        });
+        registerCondition("TestAuthnMethodsCondition", policyName);
+        logger.info("... Registered Condition : TestAuthnMethodsCondition");
+
+        createExecutor("SecureRequestObjectExecutor", SecureRequestObjectExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        });
+        registerExecutor("SecureRequestObjectExecutor", policyName);
+        logger.info("... Registered Executor : SecureRequestObjectExecutor");
+
+        String clientId = "Zahlungs-App";
+        String clientSecret = "secret";
+        String cid = createClientByAdmin(clientId, (ClientRepresentation clientRep) -> {
+            String[] defaultRoles = {"sample-client-role"};
+            clientRep.setDefaultRoles(defaultRoles);
+            clientRep.setSecret(clientSecret);
+        });
+
+        // Set up a request object
+        TestOIDCEndpointsApplicationResource oidcClientEndpointsResource = testingClient.testApp().oidcClientEndpoints();
+        oidcClientEndpointsResource.setOIDCRequest(REALM_NAME, clientId, oauth.getRedirectUri(), "10", Algorithm.none.toString());
+
+        // Send request object in "request" param
+        oauth.request(oidcClientEndpointsResource.getOIDCRequest());
+
+        try {
+            oauth.clientId(clientId);
+            oauth.openLoginForm();
+            assertEquals("invalid_request", oauth.getCurrentQuery().get("error"));
+            assertEquals("Missing parameter : exp", oauth.getCurrentQuery().get("error_description"));
+        } finally {
+            deleteClientByAdmin(cid);
+        }
+
+    }
+
+    
     private void setupPolicyAcceptableAuthType(String policyName) {
 
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
