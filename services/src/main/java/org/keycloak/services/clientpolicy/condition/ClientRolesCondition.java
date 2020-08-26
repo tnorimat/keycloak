@@ -1,21 +1,4 @@
-/*
- * Copyright 2020 Red Hat, Inc. and/or its affiliates
- * and other contributors as indicated by the @author tags.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package org.keycloak.testsuite.services.clientpolicy.condition;
+package org.keycloak.services.clientpolicy.condition;
 
 import java.util.List;
 
@@ -27,16 +10,14 @@ import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.ClientPolicyVote;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 
-public class TestClientRolesCondition implements ClientPolicyConditionProvider {
-
-    private static final Logger logger = Logger.getLogger(TestClientRolesCondition.class);
+public class ClientRolesCondition implements ClientPolicyConditionProvider {
+    private static final Logger logger = Logger.getLogger(ClientRolesCondition.class);
 
     private final KeycloakSession session;
     private final ComponentModel componentModel;
 
-    public TestClientRolesCondition(KeycloakSession session, ComponentModel componentModel) {
+    public ClientRolesCondition(KeycloakSession session, ComponentModel componentModel) {
         this.session = session;
         this.componentModel = componentModel;
     }
@@ -77,7 +58,7 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
     }
 
     private List<String> getRolesForMatching() {
-        return componentModel.getConfig().get(TestClientRolesConditionFactory.ROLES);
+        return componentModel.getConfig().get(ClientRolesConditionFactory.ROLES);
     }
 
     @Override
@@ -89,5 +70,6 @@ public class TestClientRolesCondition implements ClientPolicyConditionProvider {
     public String getProviderId() {
         return componentModel.getProviderId();
     }
+
 
 }

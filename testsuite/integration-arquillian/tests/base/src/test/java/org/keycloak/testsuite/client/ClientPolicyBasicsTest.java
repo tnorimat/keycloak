@@ -22,6 +22,7 @@ import static org.junit.Assert.fail;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
 import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -56,6 +57,8 @@ import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
+import org.keycloak.exportimport.ExportImportConfig;
+import org.keycloak.exportimport.singlefile.SingleFileExportProviderFactory;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
@@ -72,13 +75,13 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory;
-import org.keycloak.testsuite.services.clientpolicy.condition.TestClientRolesConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.executor.TestClientAuthenticationExecutorFactory;
 import org.keycloak.testsuite.services.clientpolicy.executor.TestPKCEEnforceExecutorFactory;
@@ -399,21 +402,21 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         try {
             successfulLoginAndLogout(clientId, clientSecret);
  
-            createCondition("TestClientRolesCondition", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            createCondition("ClientRolesCondition", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
                 setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role")));
             });
-            registerCondition("TestClientRolesCondition", policyName);
-            logger.info("... Registered Condition : TestClientRolesCondition");
+            registerCondition("ClientRolesCondition", policyName);
+            logger.info("... Registered Condition : ClientRolesCondition");
 
             failLoginByNotFollowingPKCE(clientId);
 
-            updateCondition("TestClientRolesCondition", (ComponentRepresentation provider) -> {
+            updateCondition("ClientRolesCondition", (ComponentRepresentation provider) -> {
                 setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("anothor-client-role")));
             });
 
             successfulLoginAndLogout(clientId, clientSecret);
 
-            deleteCondition("TestClientRolesCondition", policyName);
+            deleteCondition("ClientRolesCondition", policyName);
 
             successfulLoginAndLogout(clientId, clientSecret);
 
@@ -428,11 +431,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
 
-        createCondition("TestClientRolesCondition", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createCondition("ClientRolesCondition", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role")));
         });
-        registerCondition("TestClientRolesCondition", policyName);
-        logger.info("... Registered Condition : TestClientRolesCondition");
+        registerCondition("ClientRolesCondition", policyName);
+        logger.info("... Registered Condition : ClientRolesCondition");
 
         createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
@@ -491,11 +494,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         createPolicy(policyAlphaName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyAlphaName);
 
-        createCondition("TestClientRolesCondition-alpha", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createCondition("ClientRolesCondition-alpha", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role-alpha")));
         });
-        registerCondition("TestClientRolesCondition-alpha", policyAlphaName);
-        logger.info("... Registered Condition : TestClientRolesCondition-alpha");
+        registerCondition("ClientRolesCondition-alpha", policyAlphaName);
+        logger.info("... Registered Condition : ClientRolesCondition-alpha");
 
         createCondition("TestAuthnMethodsCondition-alpha", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
@@ -515,11 +518,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         createPolicy(policyBetaName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyBetaName);
 
-        createCondition("TestClientRolesCondition-beta", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createCondition("ClientRolesCondition-beta", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role-beta")));
         });
-        registerCondition("TestClientRolesCondition-beta", policyBetaName);
-        logger.info("... Registered Condition : TestClientRolesCondition-beta");
+        registerCondition("ClientRolesCondition-beta", policyBetaName);
+        logger.info("... Registered Condition : ClientRolesCondition-beta");
 
         createExecutor("TestPKCEEnforceExecutor-beta", TestPKCEEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAugmentActivate(provider);
@@ -541,6 +544,14 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             clientRep.setDefaultRoles((String[]) Arrays.asList("sample-client-role-beta").toArray(new String[1]));
             clientRep.setSecret(clientBetaSecret);
         });
+
+        // dump realm setting as json to clarify how conditions and executors are implemented on importing json file.
+        testingClient.testing().exportImport().setProvider(SingleFileExportProviderFactory.PROVIDER_ID);
+        String targetFilePath = testingClient.testing().exportImport().getExportImportTestDirectory() + File.separator + "singleFile-full.json";
+        testingClient.testing().exportImport().setFile(targetFilePath);
+        testingClient.testing().exportImport().setAction(ExportImportConfig.ACTION_EXPORT);
+        testingClient.testing().exportImport().setRealmName("");
+        testingClient.testing().exportImport().runExport();
 
         try {
             assertEquals(ClientIdAndSecretAuthenticator.PROVIDER_ID, getClientByAdmin(cAlphaId).getClientAuthenticatorType());
@@ -608,11 +619,11 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerCondition("TestAuthnMethodsCondition", policyName);
         logger.info("... Registered Condition : TestAuthnMethodsCondition");
 
-        createCondition("TestClientRolesCondition", TestClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+        createCondition("ClientRolesCondition", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setConditionClientRoles(provider, new ArrayList<>(Arrays.asList("sample-client-role")));
         });
-        registerCondition("TestClientRolesCondition", policyName);
-        logger.info("... Registered Condition : TestClientRolesCondition");
+        registerCondition("ClientRolesCondition", policyName);
+        logger.info("... Registered Condition : ClientRolesCondition");
 
         createExecutor("TestClientAuthenticationExecutor", TestClientAuthenticationExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
             setExecutorAcceptedClientAuthMethods(provider, new ArrayList<>(Arrays.asList(ClientIdAndSecretAuthenticator.PROVIDER_ID, JWTClientAuthenticator.PROVIDER_ID)));
@@ -887,7 +898,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     private void setConditionClientRoles(ComponentRepresentation provider, List<String> clientRoles) {
-        provider.getConfig().put(TestClientRolesConditionFactory.ROLES, clientRoles);
+        provider.getConfig().put(ClientRolesConditionFactory.ROLES, clientRoles);
     }
 
     private void setExecutorAugmentActivate(ComponentRepresentation provider) {
