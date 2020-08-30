@@ -24,11 +24,15 @@ import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import javax.ws.rs.BadRequestException;
@@ -54,6 +58,7 @@ import org.keycloak.client.registration.ClientRegistrationException;
 import org.keycloak.common.Profile;
 import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.common.util.Time;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
@@ -61,6 +66,7 @@ import org.keycloak.exportimport.ExportImportConfig;
 import org.keycloak.exportimport.singlefile.SingleFileExportProviderFactory;
 import org.keycloak.jose.jws.Algorithm;
 import org.keycloak.jose.jws.JWSHeader;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
@@ -74,18 +80,22 @@ import org.keycloak.representations.idm.EventRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
+import org.keycloak.services.Urls;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
+import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor;
+import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor.AuthorizationEndpointRequestObject;
 import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.SecureResponseTypeExecutorFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
+import org.keycloak.testsuite.client.resources.TestApplicationResourceUrls;
 import org.keycloak.testsuite.client.resources.TestOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestAuthnMethodsConditionFactory;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
@@ -95,7 +105,10 @@ import org.keycloak.testsuite.util.OAuthClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
+
 import org.keycloak.testsuite.util.ServerURLs;
+import org.keycloak.util.JsonSerialization;
 
 @EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
 public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
@@ -551,14 +564,6 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             clientRep.setSecret(clientBetaSecret);
         });
 
-        // dump realm setting as json to clarify how conditions and executors are implemented on importing json file.
-        testingClient.testing().exportImport().setProvider(SingleFileExportProviderFactory.PROVIDER_ID);
-        String targetFilePath = testingClient.testing().exportImport().getExportImportTestDirectory() + File.separator + "singleFile-full.json";
-        testingClient.testing().exportImport().setFile(targetFilePath);
-        testingClient.testing().exportImport().setAction(ExportImportConfig.ACTION_EXPORT);
-        testingClient.testing().exportImport().setRealmName("");
-        testingClient.testing().exportImport().runExport();
-
         try {
             assertEquals(ClientIdAndSecretAuthenticator.PROVIDER_ID, getClientByAdmin(cAlphaId).getClientAuthenticatorType());
 
@@ -593,7 +598,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
     }
 
     @Test
-    public void testSecureRequestObjectExecutor() throws ClientRegistrationException, ClientPolicyException {
+    public void testSecureRequestObjectExecutor() throws ClientRegistrationException, ClientPolicyException, URISyntaxException, IOException {
         String policyName = "MyPolicy";
         createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
         logger.info("... Created Policy : " + policyName);
@@ -603,12 +608,6 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         });
         registerCondition("ClientRolesCondition", policyName);
         logger.info("... Registered Condition : ClientRolesCondition");
-
-        createCondition("TestAuthnMethodsCondition", TestAuthnMethodsConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
-            setConditionRegistrationMethods(provider, new ArrayList<>(Arrays.asList(TestAuthnMethodsConditionFactory.BY_AUTHENTICATED_USER)));
-        });
-        registerCondition("TestAuthnMethodsCondition", policyName);
-        logger.info("... Registered Condition : TestAuthnMethodsCondition");
 
         createExecutor("SecureRequestObjectExecutor", SecureRequestObjectExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
         });
@@ -623,20 +622,147 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             clientRep.setSecret(clientSecret);
         });
 
-        // Set up a request object
-        TestOIDCEndpointsApplicationResource oidcClientEndpointsResource = testingClient.testApp().oidcClientEndpoints();
-        oidcClientEndpointsResource.setOIDCRequest(REALM_NAME, clientId, oauth.getRedirectUri(), "10", Algorithm.none.toString());
-
-        // Send request object in "request" param
-        oauth.request(oidcClientEndpointsResource.getOIDCRequest());
-
         try {
             oauth.clientId(clientId);
+            AuthorizationEndpointRequestObject requestObject;
+
+            // check whether whether request object exists
+            oauth.request(null);
+            oauth.requestUri(null);
             oauth.openLoginForm();
-            assertEquals("invalid_request", oauth.getCurrentQuery().get("error"));
-            assertEquals("Missing parameter : exp", oauth.getCurrentQuery().get("error_description"));
+            assertEquals(OAuthErrorException.INVALID_REQUEST, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Invalid parameter", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // check whether request_uri is https scheme
+            // cannot test because existing AuthorizationEndpoint check and return error before executing client policy
+
+            // check whether request object can be retrieved from request_uri
+            // cannot test because existing AuthorizationEndpoint check and return error before executing client policy
+
+            // check whether request object can be parsed successfully
+            // cannot test because existing AuthorizationEndpoint check and return error before executing client policy
+
+            // check whether scope exists in both query parameter and request object
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            requestObject.setScope(null);
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, true);
+            oauth.openLoginForm();
+            assertEquals(OAuthErrorException.INVALID_REQUEST, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Missing parameter : scope", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // check whether "exp" claim exists
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            requestObject.exp(null);
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, false);
+            oauth.openLoginForm();
+            assertEquals(SecureRequestObjectExecutor.INVALID_REQUEST_OBJECT, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Missing parameter : exp", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // check whether request object not expired
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            requestObject.exp(Long.valueOf(0));
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, true);
+            oauth.openLoginForm();
+            assertEquals(SecureRequestObjectExecutor.INVALID_REQUEST_OBJECT, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Request Expired", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // check whether "aud" claim exists
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            requestObject.audience((String)null);
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, false);
+            oauth.openLoginForm();
+            assertEquals(SecureRequestObjectExecutor.INVALID_REQUEST_OBJECT, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Missing parameter : aud", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // check whether "aud" claim points to this keycloak as authz server
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            requestObject.audience(suiteContext.getAuthServerInfo().getContextRoot().toString());
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, true);
+            oauth.openLoginForm();
+            assertEquals(SecureRequestObjectExecutor.INVALID_REQUEST_OBJECT, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Invalid parameter : aud", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // confirm whether all parameters in query string are included in the request object, and have the same values
+            // argument "request" are parameters overridden by parameters in request object
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            requestObject.setState("notmatchstate");
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, false);
+            oauth.openLoginForm();
+            assertEquals(OAuthErrorException.INVALID_REQUEST, oauth.getCurrentQuery().get(OAuth2Constants.ERROR));
+            assertEquals("Invalid parameter", oauth.getCurrentQuery().get(OAuth2Constants.ERROR_DESCRIPTION));
+
+            // valid request object
+            requestObject = createValidRequestObjectForSecureRequestObjectExecutor(clientId);
+            registerRequestObject(requestObject, clientId, Algorithm.ES256, true);
+
+            successfulLoginAndLogout(clientId, clientSecret);
         } finally {
             deleteClientByAdmin(cid);
+        }
+
+    }
+
+    private AuthorizationEndpointRequestObject createValidRequestObjectForSecureRequestObjectExecutor(String clientId) throws URISyntaxException {
+        AuthorizationEndpointRequestObject requestObject = new AuthorizationEndpointRequestObject();
+        requestObject.id(KeycloakModelUtils.generateId());
+        requestObject.iat(Long.valueOf(Time.currentTime()));
+        requestObject.exp(requestObject.getIat() + Long.valueOf(300));
+        requestObject.nbf(Long.valueOf(0));
+        requestObject.setClientId(clientId);
+        requestObject.setResponseType("code");
+        requestObject.setRedirectUriParam(oauth.getRedirectUri());
+        requestObject.setScope("openid");
+        String scope = KeycloakModelUtils.generateId();
+        oauth.stateParamHardcoded(scope);
+        requestObject.setState(scope);
+        requestObject.setMax_age(Integer.valueOf(600));
+        requestObject.setOtherClaims("custom_claim_ein", "rot");
+        requestObject.audience(Urls.realmIssuer(new URI(suiteContext.getAuthServerInfo().getContextRoot().toString() + "/auth"), REALM_NAME));
+        Map<String, Object> claims = ImmutableMap.of(
+                "id_token", ImmutableMap.of(
+                        "email", ImmutableMap.of("essential", true),
+                        "preferred_username", ImmutableMap.of("essential", true), 
+                        "family_name", ImmutableMap.of("essential", false),
+                        "given_name", ImmutableMap.of("wesentlich", true),
+                        "name", ImmutableMap.of("essential", true)),
+                "userinfo", ImmutableMap.of(
+                        "preferred_username", ImmutableMap.of("essential", "Ja"), 
+                        "family_name", ImmutableMap.of("essential", true),
+                        "given_name", ImmutableMap.of("essential", true)));
+        requestObject.setClaims(JsonSerialization.mapper.valueToTree(claims));
+        return requestObject;
+    }
+
+    private void registerRequestObject(AuthorizationEndpointRequestObject requestObject, String clientId, Algorithm sigAlg, boolean isUseRequestUri) throws URISyntaxException, IOException {
+        TestOIDCEndpointsApplicationResource oidcClientEndpointsResource = testingClient.testApp().oidcClientEndpoints();
+
+        // Set required signature for request_uri
+        // use and set jwks_url
+        ClientResource clientResource = ApiUtil.findClientByClientId(adminClient.realm(REALM_NAME), clientId);
+        ClientRepresentation clientRep = clientResource.toRepresentation();
+        OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setRequestObjectSignatureAlg(sigAlg);
+        OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setUseJwksUrl(true);
+        String jwksUrl = TestApplicationResourceUrls.clientJwksUri();
+        OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setJwksUrl(jwksUrl);
+        clientResource.update(clientRep);
+
+        oidcClientEndpointsResource = testingClient.testApp().oidcClientEndpoints();
+
+        // generate and register client keypair
+        oidcClientEndpointsResource.generateKeys(sigAlg.name());
+
+        // register request object
+        logger.infov("prepared request object = {0}", requestObject.toString());
+        byte[] contentBytes = JsonSerialization.writeValueAsBytes(requestObject);
+        String encodedRequestObject = Base64Url.encode(contentBytes);
+        oidcClientEndpointsResource.registerOIDCRequest(encodedRequestObject, sigAlg.name());
+
+        if (isUseRequestUri) {
+            oauth.request(null);
+            oauth.requestUri(TestApplicationResourceUrls.clientRequestUri());
+        } else {
+            oauth.requestUri(null);
+            oauth.request(oidcClientEndpointsResource.getOIDCRequest());
         }
 
     }
@@ -695,7 +821,6 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         } finally {
             deleteClientByAdmin(cid);
         }
-
     }
 
     private void setupPolicyAcceptableAuthType(String policyName) {

@@ -17,10 +17,12 @@
 
 package org.keycloak.testsuite.rest.resource;
 
+import org.apache.commons.logging.Log;
 import org.jboss.resteasy.annotations.cache.NoCache;
 import javax.ws.rs.BadRequestException;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.common.util.Base64;
+import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.KeyUtils;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.crypto.Algorithm;
@@ -36,7 +38,9 @@ import org.keycloak.jose.jwk.JWK;
 import org.keycloak.jose.jwk.JWKBuilder;
 import org.keycloak.jose.jws.JWSBuilder;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor.AuthorizationEndpointRequestObject;
 import org.keycloak.testsuite.rest.TestApplicationResourceProviderFactory;
+import org.keycloak.util.JsonSerialization;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -44,6 +48,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -186,7 +191,6 @@ public class TestingOIDCEndpointsApplicationResource {
         
     }
 
-
     @GET
     @Path("/set-oidc-request")
     @Produces(org.keycloak.utils.MediaType.APPLICATION_JWT)
@@ -203,6 +207,26 @@ public class TestingOIDCEndpointsApplicationResource {
             oidcRequest.put(OIDCLoginProtocol.MAX_AGE_PARAM, Integer.parseInt(maxAge));
         }
 
+        setOidcRequest(oidcRequest, jwaAlgorithm);
+    }
+
+    @GET
+    @Path("/register-oidc-request")
+    @Produces(org.keycloak.utils.MediaType.APPLICATION_JWT)
+    @NoCache
+    public void registerOIDCRequest(@QueryParam("requestObject") String encodedRequestObject, @QueryParam("jwaAlgorithm") String jwaAlgorithm) {
+        byte[] serializedRequestObject = Base64Url.decode(encodedRequestObject);
+        AuthorizationEndpointRequestObject oidcRequest = null;
+        try {
+        	oidcRequest = JsonSerialization.readValue(serializedRequestObject, AuthorizationEndpointRequestObject.class);
+        } catch (IOException e) {
+            throw new BadRequestException("deserialize request object failed : " + e.getMessage());
+        }
+
+        setOidcRequest(oidcRequest, jwaAlgorithm);
+    }
+
+    private void setOidcRequest(Object oidcRequest, String jwaAlgorithm) {
         if (!isSupportedAlgorithm(jwaAlgorithm)) throw new BadRequestException("Unknown argument: " + jwaAlgorithm);
 
         if ("none".equals(jwaAlgorithm)) {
@@ -251,7 +275,6 @@ public class TestingOIDCEndpointsApplicationResource {
         }
         return ret;
     }
-
 
     @GET
     @Path("/get-oidc-request")
