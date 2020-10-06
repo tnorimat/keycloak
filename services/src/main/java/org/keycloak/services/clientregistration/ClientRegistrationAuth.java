@@ -38,7 +38,9 @@ import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.DynamicClientRegisterContext;
+import org.keycloak.services.clientpolicy.DynamicClientRemoveContext;
 import org.keycloak.services.clientpolicy.DynamicClientUpdateContext;
+import org.keycloak.services.clientpolicy.DynamicClientViewContext;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyException;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyManager;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
@@ -196,6 +198,11 @@ public class ClientRegistrationAuth {
 
         if (authenticated) {
             try {
+                session.clientPolicy().triggerOnEvent(new DynamicClientViewContext(session, provider, client, jwt, session.getContext().getRealm()));
+            } catch (ClientPolicyException cpe) {
+                throw forbidden(cpe.getMessage());
+            }
+            try {
                 ClientRegistrationPolicyManager.triggerBeforeView(session, provider, authType, client);
             } catch (ClientRegistrationPolicyException crpe) {
                 throw forbidden(crpe.getMessage());
@@ -226,6 +233,11 @@ public class ClientRegistrationAuth {
     public void requireDelete(ClientModel client) {
         RegistrationAuth chainType = requireUpdateAuth(client);
 
+        try {
+            session.clientPolicy().triggerOnEvent(new DynamicClientRemoveContext(session, provider, client, jwt, session.getContext().getRealm()));
+        } catch (ClientPolicyException cpe) {
+            throw forbidden(cpe.getMessage());
+        }
         try {
             ClientRegistrationPolicyManager.triggerBeforeRemove(session, provider, chainType, client);
         } catch (ClientRegistrationPolicyException crpe) {

@@ -25,6 +25,10 @@ import org.keycloak.models.utils.RepresentationToModel;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.ForbiddenException;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.DynamicClientRegisteredContext;
+import org.keycloak.services.clientpolicy.DynamicClientUpdateContext;
+import org.keycloak.services.clientpolicy.DynamicClientUpdatedContext;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyManager;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.managers.ClientManager;
@@ -76,6 +80,7 @@ public abstract class AbstractClientRegistrationProvider implements ClientRegist
                 RepresentationToModel.createResourceServer(clientModel, session, true);
             }
 
+            session.clientPolicy().triggerOnEvent(new DynamicClientRegisteredContext(context, auth.getJwt(), realm, clientModel));
             ClientRegistrationPolicyManager.triggerAfterRegister(context, registrationAuth, clientModel);
 
             client = ModelToRepresentation.toRepresentation(clientModel, session);
@@ -99,6 +104,8 @@ public abstract class AbstractClientRegistrationProvider implements ClientRegist
             return client;
         } catch (ModelDuplicateException e) {
             throw new ErrorResponseException(ErrorCodes.INVALID_CLIENT_METADATA, "Client Identifier in use", Response.Status.BAD_REQUEST);
+        } catch (ClientPolicyException e) {
+            throw new ErrorResponseException(ErrorCodes.INVALID_CLIENT_METADATA, e.getError(), Response.Status.BAD_REQUEST);
         }
     }
 
@@ -158,6 +165,11 @@ public abstract class AbstractClientRegistrationProvider implements ClientRegist
             rep.setRegistrationAccessToken(registrationAccessToken);
         }
 
+        try {
+            session.clientPolicy().triggerOnEvent(new DynamicClientUpdatedContext(context, client, auth.getJwt(), session.getContext().getRealm()));
+        } catch (ClientPolicyException e) {
+            throw new ErrorResponseException(ErrorCodes.INVALID_CLIENT_METADATA, e.getError(), Response.Status.BAD_REQUEST);
+        }
         ClientRegistrationPolicyManager.triggerAfterUpdate(context, registrationAuth, client);
 
         event.client(client.getClientId()).success();

@@ -21,6 +21,7 @@ import org.junit.Before;
 import org.keycloak.client.registration.Auth;
 import org.keycloak.client.registration.ClientRegistration;
 import org.keycloak.client.registration.ClientRegistrationException;
+import org.keycloak.common.Profile;
 import org.keycloak.models.AdminRoles;
 import org.keycloak.models.Constants;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -28,6 +29,7 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.AbstractKeycloakTest;
+import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Collections;
@@ -37,6 +39,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
+@EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
 public abstract class AbstractClientRegistrationTest extends AbstractKeycloakTest {
 
     static final String REALM_NAME = "test";

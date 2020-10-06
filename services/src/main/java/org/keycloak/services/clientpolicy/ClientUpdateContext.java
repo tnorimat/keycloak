@@ -21,6 +21,7 @@ import org.keycloak.models.ClientModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientregistration.ClientRegistrationProvider;
 
 /**
  * Represents the context in the client registration/update by Dynamic Client Registration or Admin REST API.
@@ -44,6 +45,15 @@ public interface ClientUpdateContext extends ClientPolicyContext {
     }
 
     /**
+     * returns {@link ClientModel} of the client after its registration.
+     *
+     * @return {@link ClientModel}
+     */
+    default ClientModel getRegisteredClient() {
+        return null;
+    }
+
+    /**
      * returns {@link UserModel} of the authenticated user.
      *
      * @return {@link UserModel}
@@ -63,4 +73,12 @@ public interface ClientUpdateContext extends ClientPolicyContext {
      */
     JsonWebToken getToken();
 
+    /**
+     * returns {@link ClientRegistrationProvider} for view/delete client.
+     *
+     * @return {@link ClientRegistrationProvider}
+     */
+    default ClientRegistrationProvider getClientRegistrationProvider() {
+        return null;
+    }
 }

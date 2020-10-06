@@ -17,20 +17,21 @@
 
 package org.keycloak.services.clientpolicy;
 
-import java.util.List;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.RealmModel;
+import org.keycloak.representations.JsonWebToken;
+import org.keycloak.services.clientregistration.ClientRegistrationContext;
 
-import org.keycloak.component.ComponentFactory;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.provider.ProviderConfigProperty;
+public class DynamicClientUpdatedContext extends DynamicClientUpdateContext {
 
-public interface ClientPolicyProviderFactory extends ComponentFactory<ClientPolicyProvider, ClientPolicyProvider> {
-    /**
-     * Get config properties filled for particular session. It assumes the session.getContext() has set realm
-     *
-     * @param session
-     * @return
-     */
-    default List<ProviderConfigProperty> getConfigProperties(KeycloakSession session) {
-        return getConfigProperties();
+    public DynamicClientUpdatedContext(ClientRegistrationContext context, ClientModel client, JsonWebToken token,
+            RealmModel realm) {
+        super(context, client, token, realm);
     }
+
+    @Override
+    public ClientPolicyEvent getEvent() {
+        return ClientPolicyEvent.UPDATED;
+    }
+
 }
