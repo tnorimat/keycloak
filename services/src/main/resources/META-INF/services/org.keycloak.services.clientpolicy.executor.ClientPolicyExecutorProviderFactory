@@ -1,2 +1,9 @@
 org.keycloak.services.clientpolicy.executor.SecureResponseTypeExecutorFactory
 org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutorFactory
+org.keycloak.services.clientpolicy.executor.ClientDisabledExecutorFactory
+org.keycloak.services.clientpolicy.executor.ClientScopesExecutorFactory
+org.keycloak.services.clientpolicy.executor.ConsentRequiredExecutorFactory
+org.keycloak.services.clientpolicy.executor.MaxClientsExecutorFactory
+org.keycloak.services.clientpolicy.executor.ProtocolMappersExecutorFactory
+org.keycloak.services.clientpolicy.executor.ScopeExecutorFactory
+org.keycloak.services.clientpolicy.executor.TrustedHostExecutorFactory

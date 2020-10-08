@@ -1,0 +1,75 @@
+/*
+ * Copyright 2020 Red Hat, Inc. and/or its affiliates
+ * and other contributors as indicated by the @author tags.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.keycloak.services.clientpolicy.executor;
+
+import org.jboss.logging.Logger;
+import org.keycloak.component.ComponentModel;
+import org.keycloak.events.Errors;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.services.clientpolicy.ClientPolicyContext;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientUpdateContext;
+import org.keycloak.services.clientregistration.policy.impl.MaxClientsClientRegistrationPolicyFactory;
+
+public class MaxClientsExecutor implements ClientPolicyExecutorProvider {
+
+    private static final Logger logger = Logger.getLogger(MaxClientsExecutor.class);
+
+    private final KeycloakSession session;
+    private final ComponentModel componentModel;
+
+    public MaxClientsExecutor(KeycloakSession session, ComponentModel componentModel) {
+        this.session = session;
+        this.componentModel = componentModel;
+    }
+
+    @Override
+    public String getName() {
+        return componentModel.getName();
+    }
+
+    @Override
+    public String getProviderId() {
+        return componentModel.getProviderId();
+    }
+
+    @Override
+    public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+        ClientUpdateContext clientUpdateContext = null;
+        switch (context.getEvent()) {
+            case REGISTER:
+                clientUpdateContext = (ClientUpdateContext)context;
+                beforeRegister(clientUpdateContext.getProposedClientRepresentation());
+                break;
+            default:
+                return;
+        }
+    }
+
+    private void beforeRegister(ClientRepresentation proposedClient) throws ClientPolicyException {
+        RealmModel realm = session.getContext().getRealm();
+        long currentCount = realm.getClientsCount();
+        int maxCount = componentModel.get(MaxClientsClientRegistrationPolicyFactory.MAX_CLIENTS, MaxClientsClientRegistrationPolicyFactory.DEFAULT_MAX_CLIENTS);
+
+        if (currentCount >= maxCount) {
+            throw new ClientPolicyException(Errors.INVALID_REGISTRATION, "It's allowed to have max " + maxCount + " clients per realm");
+        }
+    }
+}
