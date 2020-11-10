@@ -7,14 +7,14 @@ import org.jboss.logging.Logger;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.CodeToTokenStoreProvider;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.protocol.ciba.utils.DecoupledAuthnResultParser.ParseResult;
+import org.keycloak.authentication.authenticators.ciba.store.OnNodeCodeToTokenStoreProviderFactory;
 
 public class EarlyAccessBlockerParser {
 
     private static final Logger logger = Logger.getLogger(EarlyAccessBlockerParser.class);
 
     public static void persistEarlyAccessBlocker(KeycloakSession session, String id, EarlyAccessBlocker earlyAccessBlockerData, int expires_in) {
-        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class, OnNodeCodeToTokenStoreProviderFactory.PROVIDER_ID);
 
         if (id == null) {
             throw new IllegalStateException("ID not present in the data");
@@ -37,8 +37,8 @@ public class EarlyAccessBlockerParser {
             return null;
         }
 
-        CodeToTokenStoreProvider earlyAccessBlockerStore = session.getProvider(CodeToTokenStoreProvider.class);
-        Map<String, String> earlyAccessBlockerData = earlyAccessBlockerStore.remove(storeKeyUUID);
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class, OnNodeCodeToTokenStoreProviderFactory.PROVIDER_ID);
+        Map<String, String> earlyAccessBlockerData = codeStore.remove(storeKeyUUID);
 
         if (earlyAccessBlockerData == null) return result.notFoundEarlyAccessBlocker();
 

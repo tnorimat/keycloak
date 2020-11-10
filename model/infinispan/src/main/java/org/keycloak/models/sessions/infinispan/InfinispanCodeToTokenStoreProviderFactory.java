@@ -41,6 +41,8 @@ public class InfinispanCodeToTokenStoreProviderFactory implements CodeToTokenSto
 
     private static final Logger LOG = Logger.getLogger(InfinispanCodeToTokenStoreProviderFactory.class);
 
+    public static final String PROVIDER_ID = "code-to-token-infinispan";
+
     // Reuse "actionTokens" infinispan cache for now
     private volatile Supplier<BasicCache<UUID, ActionTokenValueEntity>> codeCache;
 
@@ -93,6 +95,6 @@ public class InfinispanCodeToTokenStoreProviderFactory implements CodeToTokenSto
 
     @Override
     public String getId() {
-        return "infinispan";
+        return PROVIDER_ID;
     }
 }

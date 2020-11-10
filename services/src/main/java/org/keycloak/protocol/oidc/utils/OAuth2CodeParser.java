@@ -30,6 +30,7 @@ import org.keycloak.models.CodeToTokenStoreProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.sessions.infinispan.InfinispanCodeToTokenStoreProviderFactory;
 import org.keycloak.services.managers.UserSessionCrossDCManager;
 
 /**
@@ -51,7 +52,7 @@ public class OAuth2CodeParser {
      * @return code parameter to be used in OAuth2 handshake
      */
     public static String persistCode(KeycloakSession session, AuthenticatedClientSessionModel clientSession, OAuth2Code codeData) {
-        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class, InfinispanCodeToTokenStoreProviderFactory.PROVIDER_ID);
 
         UUID key = codeData.getId();
         if (key == null) {
@@ -111,7 +112,7 @@ public class OAuth2CodeParser {
 
         result.clientSession = userSession.getAuthenticatedClientSessionByClient(clientUUID);
 
-        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class, InfinispanCodeToTokenStoreProviderFactory.PROVIDER_ID);
         Map<String, String> codeData = codeStore.remove(codeUUID);
 
         // Either code not available or was already used
