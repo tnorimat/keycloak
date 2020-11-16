@@ -4,17 +4,15 @@ import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.broker.provider.util.SimpleHttp;
 import org.keycloak.common.util.Time;
-import org.keycloak.crypto.Algorithm;
-import org.keycloak.crypto.KeyUse;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
-import org.keycloak.jose.jwe.JWEException;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.ClientScopeModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.protocol.ciba.CIBAAuthDelegationRequest;
 import org.keycloak.protocol.ciba.CIBAAuthReqId;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.endpoints.request.BackchannelAuthenticationRequest;
@@ -26,13 +24,10 @@ import org.keycloak.protocol.ciba.utils.DecoupledAuthnResultParser;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.Urls;
-import org.keycloak.util.TokenUtil;
 
-import javax.crypto.SecretKey;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
 public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthenticationProviderBase {
@@ -168,7 +163,9 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
 
         StringBuilder scopeBuilder = new StringBuilder();
         Map<String, ClientScopeModel> defaultScopesMap = client.getClientScopes(true, true);
-        defaultScopesMap.forEach((key, value)->{if (value.isDisplayOnConsentScreen()) scopeBuilder.append(value.getName()).append(" ");});
+        defaultScopesMap.forEach((key, value) -> {
+            if (value.isDisplayOnConsentScreen()) scopeBuilder.append(value.getName()).append(" ");
+        });
         String defaultClientScope = scopeBuilder.toString();
 
         CIBAAuthReqId decoupledAuthIdJwt = new CIBAAuthReqId();
@@ -191,16 +188,25 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         logger.info("  decoupledAuthnRequestUri = " + decoupledAuthenticationRequestUri);
         logger.info("  userCode supported = " + userCodeSupported);
 
+        CIBAAuthDelegationRequest cibaAuthDelegationRequest = new CIBAAuthDelegationRequest();
+
+        cibaAuthDelegationRequest.issuer(Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
+        cibaAuthDelegationRequest.iat((long) Time.currentTime());
+        cibaAuthDelegationRequest.id(KeycloakModelUtils.generateId());
+        cibaAuthDelegationRequest.audience(client.getClientId());
+        cibaAuthDelegationRequest.subject(infoUsedByAuthentication);
+        cibaAuthDelegationRequest.exp((long) (Time.currentTime() + expiresIn));
+        cibaAuthDelegationRequest.setDecoupledAuthId(decoupledAuthId);
+        cibaAuthDelegationRequest.setScope(request.getScope());
+        cibaAuthDelegationRequest.setIsConsentRequired(client.isConsentRequired());
+        cibaAuthDelegationRequest.setDefaultClientScope(defaultClientScope);
+        cibaAuthDelegationRequest.setBindingMessage(request.getBindingMessage());
+        cibaAuthDelegationRequest.setUserCode(userCodeSupported ? request.getUserCode() : null);
+
         try {
             int status = SimpleHttp.doPost(decoupledAuthenticationRequestUri, session)
-                .param(DECOUPLED_AUTHN_ID, decoupledAuthId)
-                .param(DECOUPLED_AUTHN_USER_INFO, infoUsedByAuthentication)
-                .param(DECOUPLED_AUTHN_IS_CONSENT_REQUIRED, Boolean.toString(client.isConsentRequired()))
-                .param(CIBAConstants.SCOPE, request.getScope())
-                .param(DECOUPLED_DEFAULT_CLIENT_SCOPE, defaultClientScope)
-                .param(CIBAConstants.BINDING_MESSAGE, request.getBindingMessage())
-                .param(CIBAConstants.USER_CODE, userCodeSupported ? request.getUserCode() : null)
-                .asStatus();
+                                 .json(cibaAuthDelegationRequest)
+                                 .asStatus();
             logger.info("  Decoupled Authn Request URI Access = " + status);
             if (status != 200) {
                 // To terminate CIBA flow, set Auth Result as unknown
@@ -245,7 +251,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
 
         private final CIBAAuthReqId decoupledAuthIdJwt;
 
-        private boolean isIllegalDecoupledAuthId= false;
+        private boolean isIllegalDecoupledAuthId = false;
         private boolean isExpiredDecoupledAuthId = false;
 
         private ParseResult(CIBAAuthReqId decoupledAuthIdJwt) {
