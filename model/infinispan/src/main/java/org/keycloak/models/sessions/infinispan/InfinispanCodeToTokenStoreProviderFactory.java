@@ -69,9 +69,7 @@ public class InfinispanCodeToTokenStoreProviderFactory implements CodeToTokenSto
                         };
                     } else {
                         LOG.debugf("Not having remote stores. Using normal cache '%s' for single-use cache of code", cache.getName());
-                        this.codeCache = () -> {
-                            return cache;
-                        };
+                        this.codeCache = () -> cache;
                     }
                 }
             }

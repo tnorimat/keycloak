@@ -7,13 +7,15 @@ import org.jboss.logging.Logger;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.CodeToTokenStoreProvider;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.sessions.infinispan.InfinispanCodeToTokenStoreProviderFactory;
 
 public class DecoupledAuthnResultParser {
 
     private static final Logger logger = Logger.getLogger(DecoupledAuthnResultParser.class);
 
     public static void persistDecoupledAuthnResult(KeycloakSession session, String id, DecoupledAuthnResult decoupledAuthnResultData, int expires_in) {
-        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class,
+                                                                 InfinispanCodeToTokenStoreProviderFactory.PROVIDER_ID);
 
         if (id == null) {
             throw new IllegalStateException("ID not present in the data");
@@ -36,8 +38,9 @@ public class DecoupledAuthnResultParser {
             return null;
         }
 
-        CodeToTokenStoreProvider decoupledAuthnResultStore = session.getProvider(CodeToTokenStoreProvider.class);
-        Map<String, String> decoupledAuthnResultData = decoupledAuthnResultStore.remove(storeKeyUUID);
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class,
+                                                                 InfinispanCodeToTokenStoreProviderFactory.PROVIDER_ID);
+        Map<String, String> decoupledAuthnResultData = codeStore.remove(storeKeyUUID);
 
         // Either code not available or was already used
         if (decoupledAuthnResultData == null) {

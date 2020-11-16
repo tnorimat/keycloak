@@ -1,1 +1,2 @@
 org.keycloak.authentication.authenticators.ciba.store.OnNodeCodeToTokenStoreProviderFactory
+org.keycloak.models.sessions.infinispan.InfinispanCodeToTokenStoreProviderFactory

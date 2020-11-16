@@ -1,42 +1,39 @@
 package org.keycloak.authentication.authenticators.ciba.store;
 
-import org.infinispan.client.hotrod.exceptions.HotRodClientException;
-import org.infinispan.commons.api.BasicCache;
-import org.jboss.logging.Logger;
 import org.keycloak.models.CodeToTokenStoreProvider;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.sessions.infinispan.entities.ActionTokenValueEntity;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class OnNodeCodeToTokenStoreProvider implements CodeToTokenStoreProvider {
 
-    private static final Logger logger = Logger.getLogger(OnNodeCodeToTokenStoreProvider.class);
-
     private final KeycloakSession session;
-    private final Supplier<BasicCache<UUID, ActionTokenValueEntity>> codeCache;
+    private final ConcurrentHashMap<UUID, OnNodeCodeValueEntity> codeCache;
 
     public OnNodeCodeToTokenStoreProvider(KeycloakSession session,
-                                          Supplier<BasicCache<UUID, ActionTokenValueEntity>> codeCache) {
+                                          ConcurrentHashMap<UUID, OnNodeCodeValueEntity> codeCache) {
         this.session = session;
         this.codeCache = codeCache;
     }
 
     @Override
     public void put(UUID codeId, int lifespanSeconds, Map<String, String> codeData) {
-
+        OnNodeCodeValueEntity codeValue = new OnNodeCodeValueEntity(codeData, lifespanSeconds);
+        codeCache.put(codeId, codeValue);
     }
 
     @Override
     public Map<String, String> remove(UUID codeId) {
-        return null;
+        OnNodeCodeValueEntity existing = codeCache.remove(codeId);
+        return existing == null ? null : existing.getNotes();
     }
 
     @Override
     public Map<String, String> get(UUID codeId) {
-        return null;
+        OnNodeCodeValueEntity existing = codeCache.get(codeId);
+        return existing == null ? null : existing.getNotes();
     }
 
     @Override
