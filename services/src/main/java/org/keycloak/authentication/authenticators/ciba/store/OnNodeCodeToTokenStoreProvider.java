@@ -5,22 +5,22 @@ import org.keycloak.models.KeycloakSession;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class OnNodeCodeToTokenStoreProvider implements CodeToTokenStoreProvider {
 
     private final KeycloakSession session;
-    private final ConcurrentHashMap<UUID, OnNodeCodeValueEntity> codeCache;
+    private final ConcurrentMap<UUID, OnNodeCodeValueEntity> codeCache;
 
     public OnNodeCodeToTokenStoreProvider(KeycloakSession session,
-                                          ConcurrentHashMap<UUID, OnNodeCodeValueEntity> codeCache) {
+                                          ConcurrentMap<UUID, OnNodeCodeValueEntity> codeCache) {
         this.session = session;
         this.codeCache = codeCache;
     }
 
     @Override
     public void put(UUID codeId, int lifespanSeconds, Map<String, String> codeData) {
-        OnNodeCodeValueEntity codeValue = new OnNodeCodeValueEntity(codeData, lifespanSeconds);
+        OnNodeCodeValueEntity codeValue = new OnNodeCodeValueEntity(codeData);
         codeCache.put(codeId, codeValue);
     }
 

@@ -8,12 +8,13 @@ import org.keycloak.models.KeycloakSessionFactory;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class OnNodeCodeToTokenStoreProviderFactory implements CodeToTokenStoreProviderFactory {
 
     public static final String PROVIDER_ID = "on-node-code-to-token-infinispan";
 
-    private static final ConcurrentHashMap<UUID, OnNodeCodeValueEntity> storages = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<UUID, OnNodeCodeValueEntity> storages = new ConcurrentHashMap<>();
 
     @Override
     public CodeToTokenStoreProvider create(KeycloakSession session) {
