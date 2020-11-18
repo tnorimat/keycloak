@@ -30,7 +30,7 @@ import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 
 public class SecureResponseTypeEnforceExecutor implements ClientPolicyExecutorProvider {
 
-    private static final Logger logger = Logger.getLogger(SecureSigningAlgorithmEnforceExecutor.class);
+    private static final Logger logger = Logger.getLogger(SecureResponseTypeEnforceExecutor.class);
 
     private final KeycloakSession session;
     private final ComponentModel componentModel;
