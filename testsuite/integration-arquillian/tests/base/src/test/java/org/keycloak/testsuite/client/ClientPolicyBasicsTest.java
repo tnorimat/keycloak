@@ -17,6 +17,26 @@
 
 package org.keycloak.testsuite.client;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
+import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
+
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.core.Response;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.impl.client.CloseableHttpClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
@@ -68,6 +88,16 @@ import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
 import org.keycloak.services.clientpolicy.condition.*;
 import org.keycloak.services.clientpolicy.executor.*;
+import org.keycloak.services.clientpolicy.condition.ClientAccessTypeConditionFactory;
+import org.keycloak.services.clientpolicy.condition.ClientIpAddressConditionFactory;
+import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
+import org.keycloak.services.clientpolicy.condition.ClientRolesConditionFactory;
+import org.keycloak.services.clientpolicy.condition.ClientScopesConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
+import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesConditionFactory;
+import org.keycloak.services.clientpolicy.executor.*;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -76,6 +106,8 @@ import org.keycloak.testsuite.client.resources.TestApplicationResourceUrls;
 import org.keycloak.testsuite.client.resources.TestOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.rest.resource.TestingOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
+import org.keycloak.testsuite.util.AdminEventPaths;
+import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
 
 import javax.ws.rs.BadRequestException;
@@ -1070,6 +1102,63 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         } finally {
             deleteClientByAdmin(cid);
         }
+    }
+
+    @Test
+    public void testHolderOfKeyEnforceExecutor() throws Exception {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("ClientRolesCondition", ClientRolesConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionClientRoles(provider, Collections.singletonList("sample-client-role"));
+        });
+        registerCondition("ClientRolesCondition", policyName);
+        logger.info("... Registered Condition : ClientRolesCondition");
+
+        createExecutor("HolderOfKeyEnforceExecutor", HolderOfKeyEnforceExecutorFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setExecutorAugmentActivate(provider);
+        });
+        registerExecutor("HolderOfKeyEnforceExecutor", policyName);
+        logger.info("... Registered Executor : HolderOfKeyEnforceExecutor");
+
+        String clientId = "Zahlungs-App";
+        String clientSecret = "secret";
+        String cid = createClientDynamically(clientId, (OIDCClientRepresentation clientRep) -> {
+            clientRep.setClientSecret(clientSecret);
+            clientRep.setTokenEndpointAuthMethod(OIDCLoginProtocol.TLS_CLIENT_AUTH);
+        });
+
+        try {
+            successfulLoginAndLogoutMtls(cid, "password");
+        } finally {
+            deleteClientByAdmin(cid);
+        }
+    }
+
+    private void successfulLoginAndLogoutMtls(String clientId, String password) {
+        ClientResource clientResource = ApiUtil.findClientByClientId(adminClient.realm(REALM_NAME), clientId);
+        ClientRepresentation clientRep = clientResource.toRepresentation();
+        clientRep.setDefaultRoles(new String[]{"sample-client-role"});
+        OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setUseMtlsHoKToken(true);
+
+        clientResource.update(clientRep);
+
+        OAuthClient.AuthorizationEndpointResponse loginResponse = oauth.doLogin("test-user@localhost", password);
+        assertNull(loginResponse.getError());
+
+        String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
+
+        OAuthClient.AccessTokenResponse accessTokenResponse;
+        try (CloseableHttpClient client = MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore()) {
+            accessTokenResponse = oauth.doAccessTokenRequest(code, password, client);
+        }  catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        assertEquals(200, accessTokenResponse.getStatusCode());
+
+        CloseableHttpResponse logoutResponse =  oauth.doLogout(accessTokenResponse.getRefreshToken(), password);
+        assertEquals(204, logoutResponse.getStatusLine().getStatusCode());
     }
 
     private void setupPolicyAcceptableAuthType(String policyName) {

@@ -536,6 +536,9 @@ public class TokenEndpoint {
             session.clientPolicy().triggerOnEvent(new TokenRefreshContext(formParams));
         } catch (ClientPolicyException cpe) {
             event.error(cpe.getError());
+            if (MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC.equals(cpe.getErrorDetail())) {
+                throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), Response.Status.UNAUTHORIZED);
+            }
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }
 

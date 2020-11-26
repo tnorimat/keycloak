@@ -135,6 +135,9 @@ public class UserInfoEndpoint {
         try {
             session.clientPolicy().triggerOnEvent(new UserInfoRequestContext(tokenString));
         } catch (ClientPolicyException cpe) {
+            if (MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC.equals(cpe.getErrorDetail())) {
+                throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.UNAUTHORIZED);
+            }
             throw new ErrorResponseException(Errors.INVALID_REQUEST, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }
 
