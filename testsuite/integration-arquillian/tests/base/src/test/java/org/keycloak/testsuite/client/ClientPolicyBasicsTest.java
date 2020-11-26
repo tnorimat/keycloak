@@ -1145,7 +1145,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         clientResource.update(clientRep);
 
         OAuthClient.AuthorizationEndpointResponse loginResponse = oauth.doLogin("test-user@localhost", password);
-        assertNull(loginResponse.getError());
+        Assert.assertNull(loginResponse.getError());
 
         String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
 
