@@ -54,8 +54,7 @@ public class HolderOfKeyEnforceExecutorFactory implements ClientPolicyExecutorPr
 
     @Override
     public String getHelpText() {
-        // TODO:
-        return "/////////////////////It prohibits the client whose all signature algorithms are considered not to be secure.";
+        return "It prohibits the client whose MTLS certificate has problems if this verification is activated.";
     }
 
     @Override

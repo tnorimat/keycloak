@@ -81,6 +81,14 @@ import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.RefreshToken;
 import org.keycloak.representations.idm.*;
+import org.keycloak.representations.idm.ClientInitialAccessCreatePresentation;
+import org.keycloak.representations.idm.ClientInitialAccessPresentation;
+import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.ComponentRepresentation;
+import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.EventRepresentation;
+import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -106,7 +114,6 @@ import org.keycloak.testsuite.client.resources.TestApplicationResourceUrls;
 import org.keycloak.testsuite.client.resources.TestOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.rest.resource.TestingOIDCEndpointsApplicationResource;
 import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionConditionFactory;
-import org.keycloak.testsuite.util.AdminEventPaths;
 import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
 
@@ -125,6 +132,9 @@ import static org.junit.Assert.fail;
 import static org.keycloak.testsuite.AbstractTestRealmKeycloakTest.TEST_REALM_NAME;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
 import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.keycloak.util.JsonSerialization;
 
 @EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
 public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
@@ -1122,21 +1132,20 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerExecutor("HolderOfKeyEnforceExecutor", policyName);
         logger.info("... Registered Executor : HolderOfKeyEnforceExecutor");
 
-        String clientId = "Zahlungs-App";
-        String clientSecret = "secret";
-        String cid = createClientDynamically(clientId, (OIDCClientRepresentation clientRep) -> {
-            clientRep.setClientSecret(clientSecret);
+        String clientName = "Zahlungs-App";
+        String userPassword = "password";
+        String clientId = createClientDynamically(clientName, (OIDCClientRepresentation clientRep) -> {
             clientRep.setTokenEndpointAuthMethod(OIDCLoginProtocol.TLS_CLIENT_AUTH);
         });
 
         try {
-            successfulLoginAndLogoutMtls(cid, "password");
+            checkMtlsFlow(clientId, userPassword);
         } finally {
-            deleteClientByAdmin(cid);
+            deleteClientByAdmin(clientId);
         }
     }
 
-    private void successfulLoginAndLogoutMtls(String clientId, String password) {
+    private void checkMtlsFlow(String clientId, String password) throws IOException {
         ClientResource clientResource = ApiUtil.findClientByClientId(adminClient.realm(REALM_NAME), clientId);
         ClientRepresentation clientRep = clientResource.toRepresentation();
         clientRep.setDefaultRoles(new String[]{"sample-client-role"});
@@ -1144,11 +1153,13 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
 
         clientResource.update(clientRep);
 
+        // Check login.
         OAuthClient.AuthorizationEndpointResponse loginResponse = oauth.doLogin("test-user@localhost", password);
         Assert.assertNull(loginResponse.getError());
 
         String code = oauth.getCurrentQuery().get(OAuth2Constants.CODE);
 
+        // Check token obtaining.
         OAuthClient.AccessTokenResponse accessTokenResponse;
         try (CloseableHttpClient client = MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore()) {
             accessTokenResponse = oauth.doAccessTokenRequest(code, password, client);
@@ -1157,6 +1168,27 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
         assertEquals(200, accessTokenResponse.getStatusCode());
 
+        // Check token introspection.
+        String tokenResponse;
+        try (CloseableHttpClient client = MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore()) {
+            tokenResponse = oauth.introspectTokenWithClientCredential(TEST_CLIENT, password, "access_token", accessTokenResponse.getAccessToken(), client);
+        }  catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        Assert.assertNotNull(tokenResponse);
+        TokenMetadataRepresentation tokenMetadataRepresentation = JsonSerialization.readValue(tokenResponse, TokenMetadataRepresentation.class);
+        Assert.assertTrue(tokenMetadataRepresentation.isActive());
+
+        // Check token revoke.
+        CloseableHttpResponse tokenRevokeResponse;
+        try (CloseableHttpClient client = MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore()) {
+            tokenRevokeResponse = oauth.doTokenRevoke(accessTokenResponse.getRefreshToken(), "refresh_token", password, client);
+        }  catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        assertEquals(200, tokenRevokeResponse.getStatusLine().getStatusCode());
+
+        // Check logout.
         CloseableHttpResponse logoutResponse =  oauth.doLogout(accessTokenResponse.getRefreshToken(), password);
         assertEquals(204, logoutResponse.getStatusLine().getStatusCode());
     }
