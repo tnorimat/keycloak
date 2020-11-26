@@ -18,10 +18,17 @@
 package org.keycloak.services.clientpolicy.executor;
 
 import org.jboss.logging.Logger;
+import org.jboss.resteasy.spi.HttpRequest;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.OAuthErrorException;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.jose.jws.JWSInput;
+import org.keycloak.jose.jws.JWSInputException;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 
 public class SecureSigningAlgorithmForSignedJwtEnforceExecutor implements ClientPolicyExecutorProvider {
 
@@ -48,14 +55,43 @@ public class SecureSigningAlgorithmForSignedJwtEnforceExecutor implements Client
     @Override
     public void executeOnEvent(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
-        case REGISTER:
-            //do some check
-            break;
-        case UPDATE:
-            //do some check
-            break;
-        default:
+            case TOKEN_REQUEST:
+            case TOKEN_REFRESH:
+            case TOKEN_REVOKE:
+            case TOKEN_INTROSPECT:
+            case LOGOUT_REQUEST:
+                HttpRequest req = session.getContext().getContextObject(HttpRequest.class);
+                String clientAssertion = req.getDecodedFormParameters().getFirst(OAuth2Constants.CLIENT_ASSERTION);
+                JWSInput jws = null;
+                try {
+                    jws = new JWSInput(clientAssertion);
+                } catch (JWSInputException e) {
+                    throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
+                }
+                String alg = jws.getHeader().getAlgorithm().name();
+                verifySecureSigningAlgorithm(alg);
+                break;
+            default:
+                return;
+        }
+    }
+
+    private void verifySecureSigningAlgorithm(String signatureAlgorithm) throws ClientPolicyException {
+        if (signatureAlgorithm == null) {
+            ClientPolicyLogger.log(logger, "Signing algorithm not specified explicitly.");
             return;
         }
+        switch (signatureAlgorithm) {
+            case Algorithm.PS256:
+            case Algorithm.PS384:
+            case Algorithm.PS512:
+            case Algorithm.ES256:
+            case Algorithm.ES384:
+            case Algorithm.ES512:
+                ClientPolicyLogger.log(logger, "Passed. signatureAlgorithm = " + signatureAlgorithm);
+                return;
+        }
+        ClientPolicyLogger.log(logger, "NOT allowed signatureAlgorithm = " + signatureAlgorithm);
+        throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed signature algorithm.");
     }
 }
