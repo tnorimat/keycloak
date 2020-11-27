@@ -40,6 +40,7 @@ import org.keycloak.jose.jwk.JWK;
 import org.keycloak.jose.jwk.JWKBuilder;
 import org.keycloak.jose.jws.JWSBuilder;
 import org.keycloak.models.Constants;
+import org.keycloak.protocol.ciba.CIBAAuthDelegationRequest;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.decoupledauthn.DelegateDecoupledAuthenticationProvider;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
@@ -56,7 +57,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -505,36 +505,34 @@ public class TestingOIDCEndpointsApplicationResource {
 
     @POST
     @Path("/request-decoupled-authentication")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @NoCache
-    public DecoupledAuthenticationRequest requestDecoupledAuthentication(final MultivaluedMap<String, String> request) {
+    public DecoupledAuthenticationRequest requestDecoupledAuthentication(final CIBAAuthDelegationRequest cibaAuthDelegationRequest) {
             DecoupledAuthenticationRequest entry = new DecoupledAuthenticationRequest();
 
             // required
-            String decoupledAuthnBindingId = request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_ID);
+            String decoupledAuthnBindingId = cibaAuthDelegationRequest.getDecoupledAuthId();
             if (decoupledAuthnBindingId == null) throw new BadRequestException("missing parameter : " + DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_ID);
             entry.setDecoupledAuthId(decoupledAuthnBindingId);
 
-            String loginHint = request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_USER_INFO);
+            String loginHint = cibaAuthDelegationRequest.getSubject();
             if (loginHint == null) throw new BadRequestException("missing parameter : " + DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_USER_INFO);
             entry.setUserInfo(loginHint);
 
-            if (request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED) == null)
-                throw new BadRequestException("missing parameter : " + DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED);
-            entry.setConsentRequired(Boolean.valueOf(request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED)).booleanValue());
+            entry.setConsentRequired(cibaAuthDelegationRequest.getIsConsentRequired());
 
-            String scope = request.getFirst(CIBAConstants.SCOPE);
+            String scope = cibaAuthDelegationRequest.getScope();
             if (scope == null) throw new BadRequestException("missing parameter : " + CIBAConstants.SCOPE);
-            entry.setScope(request.getFirst(CIBAConstants.SCOPE));
+            entry.setScope(scope);
 
             // optional
-            entry.setDefaultClientScope(request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_DEFAULT_CLIENT_SCOPE));
-            entry.setBindingMessage(request.getFirst(CIBAConstants.BINDING_MESSAGE));
-            entry.setUserCode(request.getFirst(CIBAConstants.USER_CODE));
+            entry.setDefaultClientScope(cibaAuthDelegationRequest.getDefaultClientScope());
+            entry.setBindingMessage(cibaAuthDelegationRequest.getBindingMessage());
+            entry.setUserCode(cibaAuthDelegationRequest.getUserCode());
 
             // for testing purpose
-            if (request.getFirst(CIBAConstants.BINDING_MESSAGE).equals("GODOWN")) throw new BadRequestException("intentional error : GODOWN");
+            if (cibaAuthDelegationRequest.getBindingMessage().equals("GODOWN")) throw new BadRequestException("intentional error : GODOWN");
 
             System.out.println(" DecoupledAuthenticationRequest received.");
             System.out.println("   DecoupledAuhtnBidingId = " + entry.getDecoupledAuthId());
