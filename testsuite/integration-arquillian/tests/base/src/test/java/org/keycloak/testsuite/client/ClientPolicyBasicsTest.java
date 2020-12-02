@@ -42,9 +42,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.hamcrest.Matchers;
@@ -80,7 +78,6 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.RefreshToken;
-import org.keycloak.representations.idm.*;
 import org.keycloak.representations.idm.ClientInitialAccessCreatePresentation;
 import org.keycloak.representations.idm.ClientInitialAccessPresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -94,7 +91,6 @@ import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyProvider;
 import org.keycloak.services.clientpolicy.DefaultClientPolicyProviderFactory;
-import org.keycloak.services.clientpolicy.condition.*;
 import org.keycloak.services.clientpolicy.executor.*;
 import org.keycloak.services.clientpolicy.condition.ClientAccessTypeConditionFactory;
 import org.keycloak.services.clientpolicy.condition.ClientIpAddressConditionFactory;
@@ -105,7 +101,6 @@ import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditio
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesConditionFactory;
-import org.keycloak.services.clientpolicy.executor.*;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -117,23 +112,13 @@ import org.keycloak.testsuite.services.clientpolicy.condition.TestRaiseExeptionC
 import org.keycloak.testsuite.util.MutualTLSUtils;
 import org.keycloak.testsuite.util.OAuthClient;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
-import java.util.function.Consumer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import static org.keycloak.testsuite.AbstractTestRealmKeycloakTest.TEST_REALM_NAME;
-import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
-import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.keycloak.util.JsonSerialization;
 
 @EnableFeature(value = Profile.Feature.CLIENT_POLICIES, skipRestart = true)
