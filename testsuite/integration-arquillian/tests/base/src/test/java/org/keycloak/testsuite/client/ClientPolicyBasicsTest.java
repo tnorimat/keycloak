@@ -1139,14 +1139,14 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         });
 
         try {
-            checkMtlsFlow(clientId, userPassword);
+            checkMtlsFlow(userPassword);
         } finally {
             deleteClientByAdmin(clientId);
         }
     }
 
-    private void checkMtlsFlow(String clientId, String password) throws IOException {
-        ClientResource clientResource = ApiUtil.findClientByClientId(adminClient.realm(REALM_NAME), clientId);
+    private void checkMtlsFlow(String password) throws IOException {
+        ClientResource clientResource = ApiUtil.findClientByClientId(adminClient.realm(REALM_NAME), "test-app");
         ClientRepresentation clientRep = clientResource.toRepresentation();
         clientRep.setDefaultRoles(new String[]{"sample-client-role"});
         OIDCAdvancedConfigWrapper.fromClientRepresentation(clientRep).setUseMtlsHoKToken(true);
@@ -1167,6 +1167,15 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             throw new RuntimeException(ioe);
         }
         assertEquals(200, accessTokenResponse.getStatusCode());
+
+        // Check token refresh.
+        OAuthClient.AccessTokenResponse accessTokenResponseRefreshed;
+        try (CloseableHttpClient client = MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore()) {
+            accessTokenResponseRefreshed = oauth.doRefreshTokenRequest(accessTokenResponse.getRefreshToken(), password, client);
+        }  catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        assertEquals(200, accessTokenResponseRefreshed.getStatusCode());
 
         // Check token introspection.
         String tokenResponse;
@@ -1189,7 +1198,13 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         assertEquals(200, tokenRevokeResponse.getStatusLine().getStatusCode());
 
         // Check logout.
-        CloseableHttpResponse logoutResponse =  oauth.doLogout(accessTokenResponse.getRefreshToken(), password);
+        CloseableHttpResponse logoutResponse;
+        try (CloseableHttpClient client = MutualTLSUtils.newCloseableHttpClientWithDefaultKeyStoreAndTrustStore()) {
+            logoutResponse = oauth.doLogout(accessTokenResponse.getRefreshToken(), password, client);
+        }  catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+
         assertEquals(204, logoutResponse.getStatusLine().getStatusCode());
     }
 

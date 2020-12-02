@@ -22,25 +22,20 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.events.Errors;
-import org.keycloak.jose.jws.JWSInput;
-import org.keycloak.jose.jws.JWSInputException;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.RefreshToken;
 import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.services.clientpolicy.ClientPolicyContext;
-import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.*;
 import org.keycloak.services.util.MtlsHoKTokenUtil;
-import org.keycloak.util.JsonSerialization;
 
-import java.io.IOException;
+import javax.ws.rs.core.MultivaluedMap;
 
 public class HolderOfKeyEnforceExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
 
     private final KeycloakSession session;
     private final ComponentModel componentModel;
-
-    private boolean useMtlsHokToken;
 
     public HolderOfKeyEnforceExecutor(KeycloakSession session, ComponentModel componentModel) {
         super(session, componentModel);
@@ -67,7 +62,7 @@ public class HolderOfKeyEnforceExecutor extends AbstractAugumentingClientRegistr
 
     @Override
     protected void validate(ClientRepresentation rep) throws ClientPolicyException {
-        useMtlsHokToken = OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).isUseMtlsHokToken();
+        boolean useMtlsHokToken = OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).isUseMtlsHokToken();
         if (!useMtlsHokToken) {
             throw new ClientPolicyException(OAuthErrorException.INVALID_CLIENT_METADATA, "Invalid client metadata: MTLS token in disabled");
         }
@@ -81,40 +76,86 @@ public class HolderOfKeyEnforceExecutor extends AbstractAugumentingClientRegistr
         switch (context.getEvent()) {
 
             case TOKEN_REQUEST:
-                if (useMtlsHokToken) {
-                    AccessToken.CertConf certConf = MtlsHoKTokenUtil.bindTokenWithClientCertificate(request, session);
-                    if (certConf == null) {
-                        throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "Client Certification missing for MTLS HoK Token Binding");
-                    }
+                AccessToken.CertConf certConf = MtlsHoKTokenUtil.bindTokenWithClientCertificate(request, session);
+                if (certConf == null) {
+                    throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "Client Certification missing for MTLS HoK Token Binding");
                 }
                 break;
 
             case TOKEN_REFRESH:
+                checkTokenRefresh((TokenRefreshContext) context, request);
+                break;
+
             case TOKEN_REVOKE:
+                checkTokenRevoke((TokenRevokeContext) context, request);
+                break;
+
             case USERINFO_REQUEST:
+                checkUserInfo((UserInfoRequestContext) context, request);
+                break;
+
             case LOGOUT_REQUEST:
-                if (useMtlsHokToken) {
-                    String clientAssertion = request.getDecodedFormParameters().getFirst(OAuth2Constants.CLIENT_ASSERTION);
-                    JWSInput jws;
-                    try {
-                        jws = new JWSInput(clientAssertion);
-                    } catch (JWSInputException e) {
-                        throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "Cannot parse JWT token");
-                    }
-
-                    AccessToken token;
-
-                    try {
-                        token = JsonSerialization.readValue(jws.getContent(), AccessToken.class);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    if (!MtlsHoKTokenUtil.verifyTokenBindingWithClientCertificate(token, request, session)) {
-                        throw new ClientPolicyException(Errors.NOT_ALLOWED, MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC);
-                    }
-                }
+                checkLogout((LogoutRequestContext) context, request);
+                break;
         }
     }
 
+    private void checkLogout(LogoutRequestContext context, HttpRequest request) throws ClientPolicyException {
+        MultivaluedMap<String, String> formParameters = context.getParams();
+        String encodedRefreshToken = formParameters.getFirst(OAuth2Constants.REFRESH_TOKEN);
+
+        RefreshToken refreshToken = session.tokens().decode(encodedRefreshToken, RefreshToken.class);
+        if (refreshToken == null) {
+            // this executor does not treat this error case.
+            return;
+        }
+
+        if (!MtlsHoKTokenUtil.verifyTokenBindingWithClientCertificate(refreshToken, request, session)) {
+            throw new ClientPolicyException(Errors.NOT_ALLOWED, MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC);
+        }
+    }
+
+    private void checkUserInfo(UserInfoRequestContext context, HttpRequest request) throws ClientPolicyException {
+        String encodedAccessToken = context.getTokenString();
+
+        AccessToken accessToken = session.tokens().decode(encodedAccessToken, AccessToken.class);
+        if (accessToken == null) {
+            // this executor does not treat this error case.
+            return;
+        }
+
+        if (!MtlsHoKTokenUtil.verifyTokenBindingWithClientCertificate(accessToken, request, session)) {
+            throw new ClientPolicyException(Errors.NOT_ALLOWED, MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC);
+        }
+    }
+
+    private void checkTokenRevoke(TokenRevokeContext context, HttpRequest request) throws ClientPolicyException {
+        MultivaluedMap<String, String> revokeParameters = context.getParams();
+        String encodedRevokeToken = revokeParameters.getFirst("token");
+
+        RefreshToken refreshToken = session.tokens().decode(encodedRevokeToken, RefreshToken.class);
+        if (refreshToken == null) {
+            // this executor does not treat this error case.
+            return;
+        }
+
+        if (!MtlsHoKTokenUtil.verifyTokenBindingWithClientCertificate(refreshToken, request, session)) {
+            throw new ClientPolicyException(Errors.NOT_ALLOWED, MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC);
+        }
+    }
+
+    private void checkTokenRefresh(TokenRefreshContext context, HttpRequest request) throws ClientPolicyException {
+        MultivaluedMap<String, String> formParameters = context.getParams();
+        String encodedRefreshToken = formParameters.getFirst(OAuth2Constants.REFRESH_TOKEN);
+
+        RefreshToken refreshToken = session.tokens().decode(encodedRefreshToken, RefreshToken.class);
+        if (refreshToken == null) {
+            // this executor does not treat this error case.
+            return;
+        }
+
+        if (!MtlsHoKTokenUtil.verifyTokenBindingWithClientCertificate(refreshToken, request, session)) {
+            throw new ClientPolicyException(Errors.NOT_ALLOWED, MtlsHoKTokenUtil.CERT_VERIFY_ERROR_DESC);
+        }
+    }
 }
