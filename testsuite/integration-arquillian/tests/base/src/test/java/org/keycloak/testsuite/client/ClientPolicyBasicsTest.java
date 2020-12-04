@@ -101,6 +101,7 @@ import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceConditio
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceGroupsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceHostsConditionFactory;
 import org.keycloak.services.clientpolicy.condition.UpdatingClientSourceRolesConditionFactory;
+import org.keycloak.services.clientregistration.policy.impl.ClientScopesClientRegistrationPolicyFactory;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
@@ -1053,7 +1054,92 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             });
         } finally {
             deleteClientByAdmin(cid);
+        }
+    }
 
+    @Test
+    public void testMaxClientsClientRegistrationEnforceExecutor() throws ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        int clientsCount = adminClient.realm(TEST_REALM_NAME).clients().findAll().size();
+        int newClientsLimit = clientsCount + 1;
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null, (ComponentRepresentation provider) -> {
+            setConditionRegistrationMethods(provider, Collections.singletonList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER));
+        });
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("MaxClientsClientRegistrationEnforceExecutor", MaxClientsClientRegistrationEnforceExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> provider.getConfig().putSingle(MaxClientsClientRegistrationEnforceExecutorFactory.MAX_CLIENTS, String.valueOf(newClientsLimit)));
+
+        registerExecutor("MaxClientsClientRegistrationEnforceExecutor", policyName);
+        logger.info("... Registered Executor : MaxClientsClientRegistrationEnforceExecutor");
+
+        String cAlphaId = null;
+        cAlphaId = createClientByAdmin("Alpha-maxClients-App", (ClientRepresentation clientRep) -> {});
+        try {
+            createClientByAdmin("Betta-maxClients-App", (ClientRepresentation clientRep) -> {});
+            fail();
+        } catch (ClientPolicyException e) {
+            assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+        } finally {
+            deleteClientByAdmin(cAlphaId);
+        }
+    }
+
+    @Test
+    public void testClientScopesClientRegistrationEnforcerExecutor() throws ClientPolicyException {
+        String policyName = "MyPolicy";
+        createPolicy(policyName, DefaultClientPolicyProviderFactory.PROVIDER_ID, null, null, null);
+        logger.info("... Created Policy : " + policyName);
+
+        createCondition("UpdatingClientSourceCondition", UpdatingClientSourceConditionFactory.PROVIDER_ID, null,
+                        (ComponentRepresentation provider) -> setConditionRegistrationMethods(provider, Collections.singletonList(UpdatingClientSourceConditionFactory.BY_AUTHENTICATED_USER)));
+        registerCondition("UpdatingClientSourceCondition", policyName);
+        logger.info("... Registered Condition : UpdatingClientSourceCondition");
+
+        createExecutor("ClientScopesClientRegistrationEnforcerExecutor", ClientScopesClientRegistrationEnforcerExecutorFactory.PROVIDER_ID, null,
+                       (ComponentRepresentation provider) -> provider.getConfig().putSingle(ClientScopesClientRegistrationPolicyFactory.ALLOWED_CLIENT_SCOPES, "foo"));
+
+        registerExecutor("ClientScopesClientRegistrationEnforcerExecutor", policyName);
+        logger.info("... Registered Executor : ClientScopesClientRegistrationEnforcerExecutor");
+
+        String cAlphaId = null;
+        try {
+            //create client with allowed client scopes
+            cAlphaId = createClientByAdmin("Alpha-clientScopes-App", (ClientRepresentation clientRep) -> {
+                clientRep.setDefaultClientScopes(Collections.singletonList("foo"));
+                clientRep.setOptionalClientScopes(Collections.singletonList("foo"));
+            });
+
+            try {
+                //update client with no allowed client scopes
+                updateClientByAdmin(cAlphaId, (ClientRepresentation clientRep) -> {
+                    clientRep.setDefaultClientScopes(Collections.singletonList("bar"));
+                    clientRep.setOptionalClientScopes(Collections.singletonList("bar"));
+                });
+                fail();
+            } catch (BadRequestException bre) {
+                ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
+//                assertEquals(Collections.singletonList("foo"), clientByAdmin.getDefaultClientScopes());
+//                assertEquals(Collections.singletonList("foo"), clientByAdmin.getOptionalClientScopes());
+            }
+
+            try {
+                //create client with no allowed client scopes
+                createClientByAdmin("Betta-clientScopes-App", (ClientRepresentation clientRep) -> {
+                    clientRep.setDefaultClientScopes(Collections.singletonList("bar"));
+                    clientRep.setOptionalClientScopes(Collections.singletonList("bar"));
+                });
+                fail();
+            } catch (ClientPolicyException e) {
+                assertEquals(Errors.INVALID_REGISTRATION, e.getMessage());
+            }
+        } finally {
+            deleteClientByAdmin(cAlphaId);
         }
     }
 

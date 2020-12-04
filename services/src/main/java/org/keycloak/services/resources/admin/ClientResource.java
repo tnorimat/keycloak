@@ -222,6 +222,8 @@ public class ClientResource {
             throw new NotFoundException("Could not find client");
         }
 
+
+
         new ClientManager(new RealmManager(session)).removeClient(realm, client);
         adminEvent.operation(OperationType.DELETE).resourcePath(session.getContext().getUri()).success();
     }
