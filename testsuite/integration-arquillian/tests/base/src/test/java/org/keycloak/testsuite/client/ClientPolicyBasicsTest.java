@@ -17,8 +17,7 @@
 
 package org.keycloak.testsuite.client;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.keycloak.testsuite.admin.AbstractAdminTest.loadJson;
 import static org.keycloak.testsuite.admin.ApiUtil.findUserByUsername;
 
@@ -52,6 +51,7 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.adapters.AdapterUtils;
 import org.keycloak.admin.client.resource.ClientResource;
+import org.keycloak.admin.client.resource.ClientScopesResource;
 import org.keycloak.authentication.authenticators.client.ClientIdAndSecretAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientAuthenticator;
 import org.keycloak.authentication.authenticators.client.JWTClientSecretAuthenticator;
@@ -78,14 +78,7 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.RefreshToken;
-import org.keycloak.representations.idm.ClientInitialAccessCreatePresentation;
-import org.keycloak.representations.idm.ClientInitialAccessPresentation;
-import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.ComponentRepresentation;
-import org.keycloak.representations.idm.CredentialRepresentation;
-import org.keycloak.representations.idm.EventRepresentation;
-import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.*;
 import org.keycloak.representations.oidc.OIDCClientRepresentation;
 import org.keycloak.representations.oidc.TokenMetadataRepresentation;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -1107,12 +1100,27 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         registerExecutor("ClientScopesClientRegistrationEnforcerExecutor", policyName);
         logger.info("... Registered Executor : ClientScopesClientRegistrationEnforcerExecutor");
 
+        ClientScopesResource clientScopesResource = adminClient.realm(REALM_NAME).clientScopes();
+        //create default client scope
+        ClientScopeRepresentation fooClientScope = new ClientScopeRepresentation();
+        fooClientScope.setName("foo");
+        Response resp = clientScopesResource.create(fooClientScope);
+        String fooClientScopeId = ApiUtil.getCreatedId(resp);
+        adminClient.realm(REALM_NAME).addDefaultDefaultClientScope(fooClientScopeId);
+
+        //create optional client scope
+        ClientScopeRepresentation hazClientScope = new ClientScopeRepresentation();
+        hazClientScope.setName("haz");
+        resp = clientScopesResource.create(hazClientScope);
+        String hazClientScopeId = ApiUtil.getCreatedId(resp);
+        adminClient.realm(REALM_NAME).addDefaultOptionalClientScope(hazClientScopeId);
+
         String cAlphaId = null;
         try {
             //create client with allowed client scopes
             cAlphaId = createClientByAdmin("Alpha-clientScopes-App", (ClientRepresentation clientRep) -> {
                 clientRep.setDefaultClientScopes(Collections.singletonList("foo"));
-                clientRep.setOptionalClientScopes(Collections.singletonList("foo"));
+                clientRep.setOptionalClientScopes(Collections.singletonList("haz"));
             });
 
             try {
@@ -1124,8 +1132,8 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
                 fail();
             } catch (BadRequestException bre) {
                 ClientRepresentation clientByAdmin = getClientByAdmin(cAlphaId);
-//                assertEquals(Collections.singletonList("foo"), clientByAdmin.getDefaultClientScopes());
-//                assertEquals(Collections.singletonList("foo"), clientByAdmin.getOptionalClientScopes());
+                assertTrue(clientByAdmin.getDefaultClientScopes().contains("foo"));
+                assertTrue(clientByAdmin.getOptionalClientScopes().contains("haz"));
             }
 
             try {
@@ -1140,6 +1148,10 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
             }
         } finally {
             deleteClientByAdmin(cAlphaId);
+            adminClient.realm(REALM_NAME).removeDefaultDefaultClientScope(fooClientScopeId);
+            clientScopesResource.get(fooClientScopeId).remove();
+            adminClient.realm(REALM_NAME).removeDefaultOptionalClientScope(hazClientScopeId);
+            clientScopesResource.get(hazClientScopeId).remove();
         }
     }
 
@@ -1257,7 +1269,7 @@ public class ClientPolicyBasicsTest extends AbstractKeycloakTest {
         }
         Assert.assertNotNull(tokenResponse);
         TokenMetadataRepresentation tokenMetadataRepresentation = JsonSerialization.readValue(tokenResponse, TokenMetadataRepresentation.class);
-        Assert.assertTrue(tokenMetadataRepresentation.isActive());
+        assertTrue(tokenMetadataRepresentation.isActive());
 
         // Check token revoke.
         CloseableHttpResponse tokenRevokeResponse;
