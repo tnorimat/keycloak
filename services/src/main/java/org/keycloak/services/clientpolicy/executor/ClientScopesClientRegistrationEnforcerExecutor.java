@@ -84,7 +84,14 @@ public class ClientScopesClientRegistrationEnforcerExecutor implements ClientPol
         List<String> requestedDefaultScopeNames = clientRepresentation.getDefaultClientScopes();
         List<String> requestedOptionalScopeNames = clientRepresentation.getOptionalClientScopes();
 
-        ClientModel clientModel = session.getContext().getClient();
+        ClientModel clientModel;
+        if (context instanceof AdminClientUpdateContext) {
+            clientModel = ((AdminClientUpdateContext) context).getClientToBeUpdated();
+        } else if (context instanceof DynamicClientUpdateContext) {
+            clientModel = ((DynamicClientUpdateContext) context).getClientToBeUpdated();
+        } else {
+            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, "not allowed input format.");
+        }
         // Allow scopes, which were already presented before
         if (requestedDefaultScopeNames != null) {
             requestedDefaultScopeNames.removeAll(clientModel.getClientScopes(true, false).keySet());

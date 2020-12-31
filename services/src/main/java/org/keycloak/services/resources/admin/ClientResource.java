@@ -22,7 +22,6 @@ import org.jboss.resteasy.spi.BadRequestException;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.authorization.admin.AuthorizationService;
 import org.keycloak.common.ClientConnection;
-import org.keycloak.common.Profile;
 import org.keycloak.common.util.Time;
 import org.keycloak.events.Errors;
 import org.keycloak.events.admin.OperationType;
@@ -51,10 +50,11 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.representations.idm.UserSessionRepresentation;
 import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.ErrorResponseException;
-import org.keycloak.services.clientpolicy.AdminClientRegisterContext;
 import org.keycloak.services.clientpolicy.AdminClientUpdateContext;
+import org.keycloak.services.clientpolicy.AdminClientUpdatedContext;
+import org.keycloak.services.clientpolicy.AdminClientUnregisteredContext;
+import org.keycloak.services.clientpolicy.AdminClientViewContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.DefaultClientPolicyManager;
 import org.keycloak.services.clientregistration.ClientRegistrationTokenUtils;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
 import org.keycloak.services.managers.ClientManager;
@@ -66,31 +66,16 @@ import org.keycloak.services.resources.admin.permissions.AdminPermissions;
 import org.keycloak.services.validation.ClientValidator;
 import org.keycloak.services.validation.PairwiseClientValidator;
 import org.keycloak.services.validation.ValidationMessages;
-import org.keycloak.utils.ProfileHelper;
+import org.keycloak.utils.ReservedCharValidator;
 import org.keycloak.validation.ClientValidationUtil;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 import static java.lang.Boolean.TRUE;
-import org.keycloak.utils.ReservedCharValidator;
 
 
 /**
@@ -157,6 +142,9 @@ public class ClientResource {
         try {
             updateClientFromRep(rep, client, session);
 
+            //trigger event on client registered
+            session.clientPolicy().triggerOnEvent(new AdminClientUpdatedContext(rep, auth.adminAuth(), client));
+
             ClientValidationUtil.validate(session, client, false, c -> {
                 session.getTransactionManager().setRollbackOnly();
                 throw new ErrorResponseException(Errors.INVALID_INPUT ,c.getError(), Response.Status.BAD_REQUEST);
@@ -166,6 +154,8 @@ public class ClientResource {
             return Response.noContent().build();
         } catch (ModelDuplicateException e) {
             return ErrorResponse.exists("Client already exists");
+        } catch (ClientPolicyException cpe) {
+            throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }
     }
 
@@ -178,6 +168,13 @@ public class ClientResource {
     @NoCache
     @Produces(MediaType.APPLICATION_JSON)
     public ClientRepresentation getClient() {
+        try {
+            //trigger event on client registered
+            session.clientPolicy().triggerOnEvent(new AdminClientViewContext());
+        } catch (ClientPolicyException cpe) {
+            throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
+        }
+
         auth.clients().requireView(client);
 
         ClientRepresentation representation = ModelToRepresentation.toRepresentation(client, session);
@@ -194,7 +191,7 @@ public class ClientResource {
      * @return
      */
     @Path("certificates/{attr}")
-    public ClientAttributeCertificateResource getCertficateResource(@PathParam("attr") String attributePrefix) {
+    public ClientAttributeCertificateResource getCertificateResource(@PathParam("attr") String attributePrefix) {
         return new ClientAttributeCertificateResource(realm, auth, client, session, attributePrefix, adminEvent);
     }
 
@@ -222,7 +219,11 @@ public class ClientResource {
             throw new NotFoundException("Could not find client");
         }
 
-
+        try {
+            session.clientPolicy().triggerOnEvent(new AdminClientUnregisteredContext(auth.adminAuth()));
+        } catch (ClientPolicyException cpe) {
+            throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
+        }
 
         new ClientManager(new RealmManager(session)).removeClient(realm, client);
         adminEvent.operation(OperationType.DELETE).resourcePath(session.getContext().getUri()).success();
@@ -570,9 +571,9 @@ public class ClientResource {
         if (node == null) {
             throw new BadRequestException("Node not found in params");
         }
-        
+
         ReservedCharValidator.validate(node);
-        
+
         if (logger.isDebugEnabled()) logger.debug("Register node: " + node);
         client.registerNode(node, Time.currentTime());
         adminEvent.operation(OperationType.CREATE).resource(ResourceType.CLUSTER_NODE).resourcePath(session.getContext().getUri(), node).success();

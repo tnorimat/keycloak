@@ -25,20 +25,11 @@ import org.keycloak.common.util.Time;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
-import org.keycloak.models.AdminRoles;
-import org.keycloak.models.ClientInitialAccessModel;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.Constants;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.RoleModel;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.keycloak.protocol.oidc.utils.AuthorizeClientUtil;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.ErrorResponseException;
-import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.DynamicClientRegisterContext;
-import org.keycloak.services.clientpolicy.DynamicClientUpdateContext;
+import org.keycloak.services.clientpolicy.*;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyException;
 import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyManager;
 import org.keycloak.services.clientregistration.policy.RegistrationAuth;
@@ -196,9 +187,12 @@ public class ClientRegistrationAuth {
 
         if (authenticated) {
             try {
+                session.clientPolicy().triggerOnEvent(new DynamicClientViewContext());
                 ClientRegistrationPolicyManager.triggerBeforeView(session, provider, authType, client);
             } catch (ClientRegistrationPolicyException crpe) {
                 throw forbidden(crpe.getMessage());
+            } catch (ClientPolicyException cpe) {
+                throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
             }
         } else {
             throw unauthorized("Not authorized to view client. Not valid token or client credentials provided.");
@@ -227,9 +221,12 @@ public class ClientRegistrationAuth {
         RegistrationAuth chainType = requireUpdateAuth(client);
 
         try {
+            session.clientPolicy().triggerOnEvent(new DynamicClientUnregisteredContext(session, jwt, realm));
             ClientRegistrationPolicyManager.triggerBeforeRemove(session, provider, chainType, client);
         } catch (ClientRegistrationPolicyException crpe) {
             throw forbidden(crpe.getMessage());
+        } catch (ClientPolicyException cpe) {
+            throw new ErrorResponseException(cpe.getError(), cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }
     }
 

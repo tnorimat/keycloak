@@ -64,6 +64,20 @@ public interface ClientUpdateContext extends ClientPolicyContext {
     }
 
     /**
+     * @return the newly registered client {@link ClientModel}
+     */
+    default ClientModel getRegisteredClient() {
+        return null;
+    }
+
+    /**
+     * @return the updated client {@link ClientModel}
+     */
+    default ClientModel getClientUpdated() {
+        return null;
+    }
+
+    /**
      * returns {@link JsonWebToken} of the token accompanied with registration/update client
      *
      * @return {@link JsonWebToken}

@@ -26,7 +26,6 @@ import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.ClientPolicyLogger;
 import org.keycloak.services.clientpolicy.ClientPolicyVote;
 import org.keycloak.services.clientpolicy.ClientUpdateContext;
-import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientregistration.ClientRegistrationTokenUtils;
 import org.keycloak.util.TokenUtil;
 
@@ -46,7 +45,11 @@ public class UpdatingClientSourceCondition implements ClientPolicyConditionProvi
     public ClientPolicyVote applyPolicy(ClientPolicyContext context) throws ClientPolicyException {
         switch (context.getEvent()) {
         case REGISTER:
+        case REGISTERED:
         case UPDATE:
+        case UPDATED:
+        case VIEW:
+        case UNREGISTER:
             if (isAuthMethodMatched((ClientUpdateContext)context)) return ClientPolicyVote.YES;
             return ClientPolicyVote.NO;
         default:

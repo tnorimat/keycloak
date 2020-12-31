@@ -17,12 +17,6 @@
 
 package org.keycloak.services.clientpolicy.executor;
 
-import java.security.MessageDigest;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.ws.rs.core.MultivaluedMap;
-
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
@@ -42,7 +36,11 @@ import org.keycloak.services.clientpolicy.AuthorizationRequestContext;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.TokenRequestContext;
-import org.keycloak.services.clientpolicy.executor.AbstractAugumentingClientRegistrationPolicyExecutor;
+
+import javax.ws.rs.core.MultivaluedMap;
+import java.security.MessageDigest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PKCEEnforceExecutor extends AbstractAugumentingClientRegistrationPolicyExecutor {
 
