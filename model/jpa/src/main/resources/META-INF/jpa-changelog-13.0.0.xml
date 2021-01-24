@@ -38,4 +38,8 @@
         </createIndex>
     </changeSet>
 
+    <changeSet author="keycloak" id="json-string-accomodation">
+        <modifyDataType tableName="REALM_ATTRIBUTE" columnName="VALUE" newDataType="NVARCHAR(65535)"/>
+    </changeSet>
+
 </databaseChangeLog>
