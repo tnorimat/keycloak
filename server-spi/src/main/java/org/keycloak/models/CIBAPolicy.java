@@ -29,9 +29,6 @@ public class CIBAPolicy implements Serializable {
     protected int interval = 0;
     protected String authRequestedUserHint = "login_hint";
 
-    public CIBAPolicy() {
-    }
-
     public String getBackchannelTokenDeliveryMode() {
         return backchannelTokenDeliveryMode;
     }

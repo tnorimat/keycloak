@@ -137,6 +137,7 @@ import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.federated.UserFederatedStorageProvider;
 import org.keycloak.util.JsonSerialization;
+import org.keycloak.utils.StringUtil;
 import org.keycloak.validation.ValidationUtil;
 
 public class RepresentationToModel {
@@ -289,7 +290,7 @@ public class RepresentationToModel {
         CIBAPolicy cibaPolicy = new CIBAPolicy();
 
         String cibaBackchannelTokenDeliveryMode = rep.getCibaBackchannelTokenDeliveryMode();
-        if (cibaBackchannelTokenDeliveryMode == null || cibaBackchannelTokenDeliveryMode.isEmpty())
+        if (StringUtil.isBlank(cibaBackchannelTokenDeliveryMode))
             cibaBackchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
         cibaPolicy.setBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
 
@@ -302,7 +303,7 @@ public class RepresentationToModel {
         else cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
 
         String cibaAuthRequestedUserHint = rep.getCibaAuthRequestedUserHint();
-        if (cibaAuthRequestedUserHint == null || cibaAuthRequestedUserHint.isEmpty())
+        if (StringUtil.isBlank(cibaAuthRequestedUserHint))
             cibaAuthRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
         cibaPolicy.setAuthRequestedUserHint(cibaAuthRequestedUserHint);
 
@@ -775,16 +776,7 @@ public class RepresentationToModel {
         } else {
             newRealm.setDirectGrantFlow(newRealm.getFlowByAlias(rep.getDirectGrantFlow()));
         }
-        if (rep.getCibaFlow() == null) {
-            AuthenticationFlowModel cibaFlowModel = newRealm.getFlowByAlias(DefaultAuthenticationFlows.CIBA_FLOW);
-            if (cibaFlowModel != null) {
-                newRealm.setCIBAFlow(cibaFlowModel);
-            } else {
-                DefaultAuthenticationFlows.cibaFlow(newRealm, true);
-            }
-        } else {
-            newRealm.setCIBAFlow(newRealm.getFlowByAlias(rep.getCibaFlow()));
-        }
+        handleCibaFlowIfApplicable(newRealm, rep);
 
         // reset credentials + client flow needs to be more defensive as they were added later (in 1.5 )
         if (rep.getResetCredentialsFlow() == null) {
@@ -839,6 +831,19 @@ public class RepresentationToModel {
         DefaultAuthenticationFlows.addIdentityProviderAuthenticator(newRealm, defaultProvider);
 
         return mappedFlows;
+    }
+
+    private static void handleCibaFlowIfApplicable(RealmModel newRealm, RealmRepresentation rep) {
+        if (rep.getCibaFlow() == null) {
+            AuthenticationFlowModel cibaFlowModel = newRealm.getFlowByAlias(DefaultAuthenticationFlows.CIBA_FLOW);
+            if (cibaFlowModel != null) {
+                newRealm.setCIBAFlow(cibaFlowModel);
+            } else {
+                DefaultAuthenticationFlows.cibaFlow(newRealm, true);
+            }
+        } else {
+            newRealm.setCIBAFlow(newRealm.getFlowByAlias(rep.getCibaFlow()));
+        }
     }
 
     private static void convertDeprecatedSocialProviders(RealmRepresentation rep) {
@@ -1199,7 +1204,7 @@ public class RepresentationToModel {
         CIBAPolicy cibaPolicy = new CIBAPolicy();
 
         String cibaBackchannelTokenDeliveryMode = rep.getCibaBackchannelTokenDeliveryMode();
-        if (cibaBackchannelTokenDeliveryMode == null || cibaBackchannelTokenDeliveryMode.isEmpty())
+        if (StringUtil.isBlank(cibaBackchannelTokenDeliveryMode))
             cibaBackchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
         cibaPolicy.setBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
 
@@ -1212,7 +1217,7 @@ public class RepresentationToModel {
         else cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
 
         String cibaAuthRequestedUserHint = rep.getCibaAuthRequestedUserHint();
-        if (cibaAuthRequestedUserHint == null || cibaAuthRequestedUserHint.isEmpty())
+        if (StringUtil.isBlank(cibaAuthRequestedUserHint))
             cibaAuthRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
         cibaPolicy.setAuthRequestedUserHint(cibaAuthRequestedUserHint);
 

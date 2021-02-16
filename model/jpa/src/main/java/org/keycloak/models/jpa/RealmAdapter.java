@@ -27,6 +27,7 @@ import org.keycloak.models.*;
 import org.keycloak.models.jpa.entities.*;
 import org.keycloak.models.utils.ComponentUtil;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.utils.StringUtil;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
@@ -1053,20 +1054,20 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
         CIBAPolicy policy = new CIBAPolicy();
 
         String backchannelTokenDeliveryMode = getAttribute(RealmAttributes.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE);
-        if (backchannelTokenDeliveryMode == null || backchannelTokenDeliveryMode.isEmpty())
+        if (StringUtil.isBlank(backchannelTokenDeliveryMode))
             backchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
         policy.setBackchannelTokenDeliveryMode(backchannelTokenDeliveryMode);
 
         String expiresIn = getAttribute(RealmAttributes.CIBA_EXPIRES_IN);
-        if (expiresIn != null) policy.setExpiresIn(Integer.parseInt(expiresIn));
+        if (StringUtil.isNotBlank(expiresIn)) policy.setExpiresIn(Integer.parseInt(expiresIn));
         else policy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
 
         String interval = getAttribute(RealmAttributes.CIBA_INTERVAL);
-        if (interval != null) policy.setInterval(Integer.parseInt(interval));
+        if (StringUtil.isNotBlank(interval)) policy.setInterval(Integer.parseInt(interval));
         else policy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
 
         String authRequestedUserHint = getAttribute(RealmAttributes.CIBA_AUTH_REQUESTED_USER_HINT);
-        if (authRequestedUserHint == null || authRequestedUserHint.isEmpty())
+        if (StringUtil.isBlank(authRequestedUserHint))
             authRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
         policy.setAuthRequestedUserHint(authRequestedUserHint);
 

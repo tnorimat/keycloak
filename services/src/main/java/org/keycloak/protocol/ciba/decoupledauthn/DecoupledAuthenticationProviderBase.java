@@ -173,14 +173,15 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
         processor.attachSession();
         UserSessionModel userSession = processor.getUserSession();
         if (userSession == null) {
-            logger.info(" userSession is null.");
+            event.error(Errors.USER_SESSION_NOT_FOUND);
+            throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, "User session is not found", Response.Status.BAD_REQUEST);
         } else {
-            logger.info(" user session id = " + userSession.getId() + ", username = " + userSession.getUser().getUsername());
+            logger.infof(" user session id =  %s, username = %s", userSession.getId(), userSession.getUser().getUsername());
         }
         updateUserSessionFromClientAuth(userSession);
 
-        logger.info("  Created User Session's id                            = " + userSession.getId());
-        logger.info("  Submitted in advance User Session ID Will Be Created = " + getUserSessionIdWillBeCreated());
+        logger.infof("  Created User Session's id                            = %s", userSession.getId());
+        logger.infof("  Submitted in advance User Session ID Will Be Created = %s", getUserSessionIdWillBeCreated());
 
         // authorization (consent)
         UserConsentModel grantedConsent = session.users().getConsentByClient(realm, user.getId(), client.getId());
@@ -188,7 +189,7 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
             grantedConsent = new UserConsentModel(client);
             session.users().addConsent(realm, user.getId(), grantedConsent);
             logger.info("  Consent updated : ");
-            grantedConsent.getGrantedClientScopes().stream().forEach(i->logger.info(i.getName()));
+            grantedConsent.getGrantedClientScopes().forEach(i->logger.info(i.getName()));
         }
 
         boolean updateConsentRequired = false;
@@ -208,7 +209,7 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
         if (updateConsentRequired) {
             session.users().updateConsent(realm, user.getId(), grantedConsent);
             logger.info("  Consent granted : ");
-            grantedConsent.getGrantedClientScopes().stream().forEach(i->logger.info(i.getName()));
+            grantedConsent.getGrantedClientScopes().forEach(i->logger.info(i.getName()));
         }
 
         event.detail(Details.CONSENT, Details.CONSENT_VALUE_CONSENT_GRANTED);
