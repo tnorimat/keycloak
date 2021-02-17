@@ -101,6 +101,7 @@ import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentat
 import org.keycloak.representations.idm.AuthenticationExecutionRepresentation;
 import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.AuthenticatorConfigRepresentation;
+import org.keycloak.representations.idm.CIBARepresentation;
 import org.keycloak.representations.idm.ClaimRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientScopeRepresentation;
@@ -287,26 +288,7 @@ public class RepresentationToModel {
         webAuthnPolicy = getWebAuthnPolicyPasswordless(rep);
         newRealm.setWebAuthnPolicyPasswordless(webAuthnPolicy);
 
-        CIBAPolicy cibaPolicy = new CIBAPolicy();
-
-        String cibaBackchannelTokenDeliveryMode = rep.getCibaBackchannelTokenDeliveryMode();
-        if (StringUtil.isBlank(cibaBackchannelTokenDeliveryMode))
-            cibaBackchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
-        cibaPolicy.setBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
-
-        Integer cibaExpiresIn = rep.getCibaExpiresIn();
-        if (cibaExpiresIn != null) cibaPolicy.setExpiresIn(cibaExpiresIn);
-        else cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
-
-        Integer cibaInterval = rep.getCibaInterval();
-        if (cibaInterval != null) cibaPolicy.setInterval(cibaInterval);
-        else cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
-
-        String cibaAuthRequestedUserHint = rep.getCibaAuthRequestedUserHint();
-        if (StringUtil.isBlank(cibaAuthRequestedUserHint))
-            cibaAuthRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
-        cibaPolicy.setAuthRequestedUserHint(cibaAuthRequestedUserHint);
-
+        CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep.getCiba());
         newRealm.setCIBAPolicy(cibaPolicy);
 
         Map<String, String> mappedFlows = importAuthenticationFlows(newRealm, rep);
@@ -566,6 +548,35 @@ public class RepresentationToModel {
         if (webAuthnPolicyAcceptableAaguids != null) webAuthnPolicy.setAcceptableAaguids(webAuthnPolicyAcceptableAaguids);
 
         return webAuthnPolicy;
+    }
+
+    private static CIBAPolicy convertCIBARepresentationToPolicy(CIBARepresentation cibaRep) {
+        CIBAPolicy cibaPolicy = new CIBAPolicy();
+        if (cibaRep != null) {
+            String cibaBackchannelTokenDeliveryMode = cibaRep.getCibaBackchannelTokenDeliveryMode();
+            if (StringUtil.isBlank(cibaBackchannelTokenDeliveryMode))
+                cibaBackchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
+            cibaPolicy.setBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
+
+            Integer cibaExpiresIn = cibaRep.getCibaExpiresIn();
+            if (cibaExpiresIn != null) cibaPolicy.setExpiresIn(cibaExpiresIn);
+            else cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
+
+            Integer cibaInterval = cibaRep.getCibaInterval();
+            if (cibaInterval != null) cibaPolicy.setInterval(cibaInterval);
+            else cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
+
+            String cibaAuthRequestedUserHint = cibaRep.getCibaAuthRequestedUserHint();
+            if (StringUtil.isBlank(cibaAuthRequestedUserHint))
+                cibaAuthRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
+            cibaPolicy.setAuthRequestedUserHint(cibaAuthRequestedUserHint);
+        } else {
+            cibaPolicy.setBackchannelTokenDeliveryMode(Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE);
+            cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
+            cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
+            cibaPolicy.setAuthRequestedUserHint(Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT);
+        }
+        return cibaPolicy;
     }
 
     public static void importUserFederationProvidersAndMappers(KeycloakSession session, RealmRepresentation rep, RealmModel newRealm) {
@@ -839,7 +850,7 @@ public class RepresentationToModel {
             if (cibaFlowModel != null) {
                 newRealm.setCIBAFlow(cibaFlowModel);
             } else {
-                DefaultAuthenticationFlows.cibaFlow(newRealm, true);
+                DefaultAuthenticationFlows.cibaFlow(newRealm);
             }
         } else {
             newRealm.setCIBAFlow(newRealm.getFlowByAlias(rep.getCibaFlow()));
@@ -1201,26 +1212,7 @@ public class RepresentationToModel {
         webAuthnPolicy = getWebAuthnPolicyPasswordless(rep);
         realm.setWebAuthnPolicyPasswordless(webAuthnPolicy);
 
-        CIBAPolicy cibaPolicy = new CIBAPolicy();
-
-        String cibaBackchannelTokenDeliveryMode = rep.getCibaBackchannelTokenDeliveryMode();
-        if (StringUtil.isBlank(cibaBackchannelTokenDeliveryMode))
-            cibaBackchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
-        cibaPolicy.setBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
-
-        Integer cibaExpiresIn = rep.getCibaExpiresIn();
-        if (cibaExpiresIn != null) cibaPolicy.setExpiresIn(cibaExpiresIn);
-        else cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
-
-        Integer cibaInterval = rep.getCibaInterval();
-        if (cibaInterval != null) cibaPolicy.setInterval(cibaInterval);
-        else cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
-
-        String cibaAuthRequestedUserHint = rep.getCibaAuthRequestedUserHint();
-        if (StringUtil.isBlank(cibaAuthRequestedUserHint))
-            cibaAuthRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
-        cibaPolicy.setAuthRequestedUserHint(cibaAuthRequestedUserHint);
-
+        CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep.getCiba());
         realm.setCIBAPolicy(cibaPolicy);
 
         if (rep.getSmtpServer() != null) {

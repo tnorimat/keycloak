@@ -60,7 +60,7 @@ public class DefaultAuthenticationFlows {
         if (realm.getFlowByAlias(SAML_ECP_FLOW) == null) samlEcpProfile(realm);
         if (realm.getFlowByAlias(DOCKER_AUTH) == null) dockerAuthenticationFlow(realm);
         if (realm.getFlowByAlias(HTTP_CHALLENGE_FLOW) == null) httpChallengeFlow(realm);
-        if (realm.getFlowByAlias(CIBA_FLOW) == null) cibaFlow(realm, false);
+        if (realm.getFlowByAlias(CIBA_FLOW) == null) cibaFlow(realm);
     }
     public static void migrateFlows(RealmModel realm) {
         if (realm.getFlowByAlias(BROWSER_FLOW) == null) browserFlow(realm, true);
@@ -72,7 +72,7 @@ public class DefaultAuthenticationFlows {
         if (realm.getFlowByAlias(SAML_ECP_FLOW) == null) samlEcpProfile(realm);
         if (realm.getFlowByAlias(DOCKER_AUTH) == null) dockerAuthenticationFlow(realm);
         if (realm.getFlowByAlias(HTTP_CHALLENGE_FLOW) == null) httpChallengeFlow(realm);
-        if (realm.getFlowByAlias(CIBA_FLOW) == null) cibaFlow(realm, true);
+        if (realm.getFlowByAlias(CIBA_FLOW) == null) cibaFlow(realm);
     }
 
     public static void registrationFlow(RealmModel realm) {
@@ -381,7 +381,7 @@ public class DefaultAuthenticationFlows {
         realm.addAuthenticatorExecution(execution);
     }
 
-    public static void cibaFlow(RealmModel realm, boolean migrate) {
+    public static void cibaFlow(RealmModel realm) {
         AuthenticationFlowModel grant = new AuthenticationFlowModel();
         grant.setAlias(CIBA_FLOW);
         grant.setDescription("OpenID Connect CIBA flow");

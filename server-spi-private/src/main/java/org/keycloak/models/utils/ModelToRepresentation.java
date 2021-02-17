@@ -402,10 +402,12 @@ public class ModelToRepresentation {
         rep.setWebAuthnPolicyPasswordlessAcceptableAaguids(webAuthnPolicy.getAcceptableAaguids());
 
         CIBAPolicy cibaPolicy = realm.getCIBAPolicy();
-        rep.setCibaBackchannelTokenDeliveryMode(cibaPolicy.getBackchannelTokenDeliveryMode());
-        rep.setCibaExpiresIn(cibaPolicy.getExpiresIn());
-        rep.setCibaInterval(cibaPolicy.getInterval());
-        rep.setCibaAuthRequestedUserHint(cibaPolicy.getAuthRequestedUserHint());
+        CIBARepresentation cibaRep = new CIBARepresentation();
+        cibaRep.setCibaBackchannelTokenDeliveryMode(cibaPolicy.getBackchannelTokenDeliveryMode());
+        cibaRep.setCibaExpiresIn(cibaPolicy.getExpiresIn());
+        cibaRep.setCibaInterval(cibaPolicy.getInterval());
+        cibaRep.setCibaAuthRequestedUserHint(cibaPolicy.getAuthRequestedUserHint());
+        rep.setCiba(cibaRep);
 
         if (realm.getBrowserFlow() != null) rep.setBrowserFlow(realm.getBrowserFlow().getAlias());
         if (realm.getRegistrationFlow() != null) rep.setRegistrationFlow(realm.getRegistrationFlow().getAlias());

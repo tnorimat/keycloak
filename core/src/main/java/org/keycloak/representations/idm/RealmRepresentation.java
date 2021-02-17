@@ -140,10 +140,7 @@ public class RealmRepresentation {
     protected List<String> webAuthnPolicyPasswordlessAcceptableAaguids;
 
     // CIBA policy
-    protected String cibaBackchannelTokenDeliveryMode;
-    protected Integer cibaExpiresIn;
-    protected Integer cibaInterval;
-    protected String cibaAuthRequestedUserHint;
+    protected CIBARepresentation ciba;
 
     protected List<UserRepresentation> users;
     protected List<UserRepresentation> federatedUsers;
@@ -1163,37 +1160,14 @@ public class RealmRepresentation {
     }
 
     // CIBA policy
-    public String getCibaBackchannelTokenDeliveryMode() {
-        return this.cibaBackchannelTokenDeliveryMode;
+    public CIBARepresentation getCiba() {
+        return ciba;
     }
 
-    public void setCibaBackchannelTokenDeliveryMode(String cibaBackchannelTokenDeliveryMode) {
-        this.cibaBackchannelTokenDeliveryMode = cibaBackchannelTokenDeliveryMode;
+    public void setCiba(CIBARepresentation ciba) {
+        this.ciba = ciba;
     }
 
-    public Integer getCibaExpiresIn() {
-        return cibaExpiresIn;
-    }
-
-    public void setCibaExpiresIn(Integer cibaExpiresIn) {
-        this.cibaExpiresIn = cibaExpiresIn;
-    }
-
-    public Integer getCibaInterval() {
-        return cibaInterval;
-    }
-
-    public void setCibaInterval(Integer cibaInterval) {
-        this.cibaInterval = cibaInterval;
-    }
-
-    public String getCibaAuthRequestedUserHint() {
-        return this.cibaAuthRequestedUserHint;
-    }
-
-    public void setCibaAuthRequestedUserHint(String cibaAuthRequestedUserHint) {
-        this.cibaAuthRequestedUserHint = cibaAuthRequestedUserHint;
-    }
     public String getBrowserFlow() {
         return browserFlow;
     }
