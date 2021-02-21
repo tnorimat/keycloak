@@ -17,7 +17,7 @@
 package org.keycloak.protocol.ciba;
 
 import java.util.Map;
-import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -26,26 +26,23 @@ import org.keycloak.protocol.ciba.utils.EarlyAccessBlocker;
 
 public class EarlyAccessBlockerStore {
 
-    private final static ConcurrentMap<UUID, EarlyAccessBlockerValueEntity> blockerCache = new ConcurrentHashMap<>();
+    private final static ConcurrentMap<String, EarlyAccessBlockerValueEntity> blockerCache = new ConcurrentHashMap<>();
 
-    public static void put(UUID blockerId, int lifespanSeconds, Map<String, String> blockerData) {
+    public static void put(String id, int lifespanSeconds, Map<String, String> blockerData) {
         EarlyAccessBlockerValueEntity blockerValue = new EarlyAccessBlockerValueEntity(blockerData);
-        blockerCache.put(blockerId, blockerValue);
+        blockerCache.put(id, blockerValue);
     }
 
-    public static Map<String, String> remove(UUID codeId) {
-        EarlyAccessBlockerValueEntity existing = blockerCache.remove(codeId);
+    public static Map<String, String> remove(String id) {
+        EarlyAccessBlockerValueEntity existing = blockerCache.remove(id);
         return existing == null ? null : existing.getNotes();
     }
 
     public static void sweepExpiredEntries() {
-        int currentTime = Time.currentTime();
-        blockerCache.keySet().stream().forEach(i->{
-            EarlyAccessBlockerValueEntity e = blockerCache.get(i);
-            if (e == null) return;
-            if (currentTime > EarlyAccessBlocker.deserializeCode(e.getNotes()).getExpiration()) {
-                blockerCache.remove(i);
-            }
-        });
+        blockerCache.keySet().stream()
+                .filter(i -> Optional.ofNullable(blockerCache.get(i)).isPresent())
+                .filter(i -> Optional.ofNullable(blockerCache.get(i).getNotes()).isPresent())
+                .filter(i -> Time.currentTime() > EarlyAccessBlocker.deserializeCode(blockerCache.get(i).getNotes()).getExpiration())
+                .forEach(i -> blockerCache.remove(i));
     }
 }

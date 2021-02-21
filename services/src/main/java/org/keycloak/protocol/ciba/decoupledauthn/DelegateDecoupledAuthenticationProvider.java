@@ -195,7 +195,6 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         decoupledAuthIdJwt.issuedFor(client.getClientId()); // TODO : set CD's client_id intentionally, not Decoupled Auth Server. It is not good idea so that client_id field should be added.
         String decoupledAuthId = CIBAAuthReqIdParser.persistAuthReqId(session, decoupledAuthIdJwt);
 
-        logger.info("  decoupledAuthnRequestUri = " + decoupledAuthenticationRequestUri);
         try {
             int status = SimpleHttp.doPost(decoupledAuthenticationRequestUri, session)
                 .param(DECOUPLED_AUTHN_ID, decoupledAuthId)
@@ -205,7 +204,6 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
                 .param(DECOUPLED_DEFAULT_CLIENT_SCOPE, defaultClientScope)
                 .param(CIBAConstants.BINDING_MESSAGE, request.getBindingMessage())
                 .asStatus();
-            logger.info("  Decoupled Authn Request URI Access = " + status);
             if (status != 200) {
                 // To terminate CIBA flow, set Auth Result as unknown
                 DecoupledAuthnResult decoupledAuthnResult = new DecoupledAuthnResult(Time.currentTime() + expiresIn, DecoupledAuthStatus.UNKNOWN);
@@ -227,8 +225,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         try {
             decoupledAuthIdJwt = CIBAAuthReqIdParser.getAuthReqIdJwt(session, encodedJwt);
         } catch (Exception e) {
-            logger.info("illegal format of decoupled_auth_id : e.getMessage() = " + e.getMessage());
-            e.printStackTrace();
+            logger.warnf("illegal format of decoupled_auth_id : %s", e.getMessage());
             return (new ParseResult(null)).illegalDecoupledAuthId();
         }
         ParseResult result = new ParseResult(decoupledAuthIdJwt);
@@ -237,8 +234,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         event.session(result.decoupledAuthIdJwt.getSessionState());
 
         // Finally doublecheck if code is not expired
-        int currentTime = Time.currentTime();
-        if (currentTime > result.decoupledAuthIdJwt.getExp().intValue()) {
+        if (Time.currentTime() > result.decoupledAuthIdJwt.getExp().intValue()) {
             return result.expiredDecoupledAuthId();
         }
 

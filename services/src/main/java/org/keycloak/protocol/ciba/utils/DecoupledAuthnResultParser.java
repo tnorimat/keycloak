@@ -29,19 +29,19 @@ public class DecoupledAuthnResultParser {
     private static final Logger logger = Logger.getLogger(DecoupledAuthnResultParser.class);
 
     public static void persistDecoupledAuthnResult(KeycloakSession session, String id, DecoupledAuthnResult decoupledAuthnResultData, int expires_in) {
-        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
-
         if (id == null) {
             throw new IllegalStateException("ID not present in the data");
         }
         UUID key = UUID.fromString(id);
+
+        CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
 
         Map<String, String> serialized = decoupledAuthnResultData.serializeCode();
         codeStore.put(key, expires_in, serialized);
     }
 
     public static ParseResult parseDecoupledAuthnResult(KeycloakSession session, String id) {
-        ParseResult result = new ParseResult(id);
+        ParseResult result = new ParseResult();
 
         // Parse UUID
         UUID storeKeyUUID;
@@ -64,8 +64,7 @@ public class DecoupledAuthnResultParser {
         result.decoupledAuthnResultData = DecoupledAuthnResult.deserializeCode(decoupledAuthnResultData);
 
         // Finally doublecheck if code is not expired
-        int currentTime = Time.currentTime();
-        if (currentTime > result.decoupledAuthnResultData.getExpiration()) {
+        if (Time.currentTime() > result.decoupledAuthnResultData.getExpiration()) {
             return result.expiredDecoupledAuthnResult();
         }
 
@@ -74,15 +73,10 @@ public class DecoupledAuthnResultParser {
 
     public static class ParseResult {
 
-        private final String id;
         private DecoupledAuthnResult decoupledAuthnResultData;
 
         private boolean isNotYetDecoupledAuthnResult = false;
         private boolean isExpiredDecoupledAuthnResult = false;
-
-        private ParseResult(String id) {
-            this.id = id;
-        }
 
         public DecoupledAuthnResult decoupledAuthnResultData() {
             return decoupledAuthnResultData;

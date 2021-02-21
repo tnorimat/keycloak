@@ -25,7 +25,7 @@ public class EarlyAccessBlockerValueEntity {
     private final Map<String, String> notes;
 
     public EarlyAccessBlockerValueEntity(Map<String, String> notes) {
-        this.notes = notes == null ? Collections.EMPTY_MAP : new HashMap<>(notes);
+        this.notes = notes == null ? Collections.emptyMap() : new HashMap<>(notes);
     }
 
     public Map<String, String> getNotes() {

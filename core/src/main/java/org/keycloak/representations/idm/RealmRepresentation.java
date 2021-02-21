@@ -183,7 +183,6 @@ public class RealmRepresentation {
     protected String resetCredentialsFlow;
     protected String clientAuthenticationFlow;
     protected String dockerAuthenticationFlow;
-    protected String cibaFlow;
 
     protected Map<String, String> attributes;
 
@@ -1215,14 +1214,6 @@ public class RealmRepresentation {
     public RealmRepresentation setDockerAuthenticationFlow(final String dockerAuthenticationFlow) {
         this.dockerAuthenticationFlow = dockerAuthenticationFlow;
         return this;
-    }
-
-    public String getCibaFlow() {
-        return cibaFlow;
-    }
-
-    public void setCibaFlow(String cibaFlow) {
-        this.cibaFlow = cibaFlow;
     }
 
     public String getKeycloakVersion() {

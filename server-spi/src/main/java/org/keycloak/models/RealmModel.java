@@ -27,9 +27,11 @@ import org.keycloak.storage.client.ClientStorageProvider;
 import org.keycloak.storage.client.ClientStorageProviderModel;
 import org.keycloak.storage.role.RoleStorageProvider;
 import org.keycloak.storage.role.RoleStorageProviderModel;
+import org.keycloak.utils.StringUtil;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -114,6 +116,9 @@ public interface RealmModel extends RoleContainerModel {
     void setAttribute(String name, Long value);
     void removeAttribute(String name);
     String getAttribute(String name);
+    default String getAttribute(String name, String defaultValue) {
+        return Optional.ofNullable(getAttribute(name)).filter(StringUtil::isNotBlank).orElse(defaultValue);
+    }
     Integer getAttribute(String name, Integer defaultValue);
     Long getAttribute(String name, Long defaultValue);
     Boolean getAttribute(String name, Boolean defaultValue);

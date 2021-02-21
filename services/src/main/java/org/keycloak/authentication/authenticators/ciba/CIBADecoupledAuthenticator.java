@@ -16,6 +16,8 @@
  */
 package org.keycloak.authentication.authenticators.ciba;
 
+import java.util.Optional;
+
 import org.jboss.logging.Logger;
 
 import org.keycloak.authentication.AuthenticationFlowContext;
@@ -33,18 +35,18 @@ public class CIBADecoupledAuthenticator implements Authenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
-        String userIdField = context.getAuthenticatorConfig().getConfig().get(CIBADecoupledAuthenticatorFactory.DEFAULT_USERID_FIELD);
-        if (userIdField == null) userIdField = CIBAConstants.LOGIN_HINT;
+        String userIdField = Optional.ofNullable(
+                context.getAuthenticatorConfig().getConfig().get(CIBADecoupledAuthenticatorFactory.DEFAULT_USERID_FIELD))
+                .orElse(CIBAConstants.LOGIN_HINT);
         String username = context.getHttpRequest().getDecodedFormParameters().getFirst(userIdField);
 
-        logger.info("username = " + username);
+        logger.tracef("CIBA Grant :: authenticator username = %s", username);
         UserModel user = KeycloakModelUtils.findUserByNameOrEmail(context.getSession(), context.getRealm(), username);
         if (user == null) {
-            logger.info("user model not found");
             context.failure(AuthenticationFlowError.UNKNOWN_USER);
             return;
         }
-        logger.infof("user model found. user.getId() = %s, user.getEmail() = %s, user.getUsername() = %s.", user.getId(), user.getEmail(), user.getUsername());
+        logger.tracef("CIBA Grant :: user model found. user.getId() = %s, user.getEmail() = %s, user.getUsername() = %s.", user.getId(), user.getEmail(), user.getUsername());
         context.setUser(user);
         context.success();
     }

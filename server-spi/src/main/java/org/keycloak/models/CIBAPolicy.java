@@ -18,16 +18,21 @@ package org.keycloak.models;
 
 import java.io.Serializable;
 
-import org.jboss.logging.Logger;
-
 public class CIBAPolicy implements Serializable {
 
-    protected static final Logger logger = Logger.getLogger(CIBAPolicy.class);
+    private String cibaFlow;
+    private String backchannelTokenDeliveryMode = "poll";
+    private int expiresIn = 120;
+    private int interval = 0;
+    private String authRequestedUserHint = "login_hint";
 
-    protected String backchannelTokenDeliveryMode = "poll";
-    protected int expiresIn = 120;
-    protected int interval = 0;
-    protected String authRequestedUserHint = "login_hint";
+    public String getCibaFlow() {
+        return cibaFlow;
+    }
+
+    public void setCibaFlow(String cibaFlow) {
+        this.cibaFlow = cibaFlow;
+    }
 
     public String getBackchannelTokenDeliveryMode() {
         return backchannelTokenDeliveryMode;

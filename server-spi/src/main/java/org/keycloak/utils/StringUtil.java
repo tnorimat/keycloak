@@ -23,7 +23,7 @@ public class StringUtil {
     }
 
     public static boolean  isNotBlank(String str) {
-        return str != null && !str.isEmpty();
+        return str != null && !"".equals(str.trim());
     }
 
 }

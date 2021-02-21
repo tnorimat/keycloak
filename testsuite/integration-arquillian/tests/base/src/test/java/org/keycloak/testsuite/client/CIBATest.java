@@ -134,6 +134,7 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
         System.setProperty("keycloak.decoupled.auth.request.uri", TestApplicationResourceUrls.clientDecoupledAuthenticationRequestUri());
     }
 
+    private String cibaFlow;
     private String cibaBackchannelTokenDeliveryMode;
     private Integer cibaExpiresIn;
     private Integer cibaInterval;
@@ -786,6 +787,7 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
     
     private RealmRepresentation backupCIBAPolicy() {
         RealmRepresentation rep = testRealm().toRepresentation();
+        cibaFlow = rep.getCiba().getCibaFlow();
         cibaBackchannelTokenDeliveryMode = rep.getCiba().getCibaBackchannelTokenDeliveryMode();
         cibaExpiresIn = rep.getCiba().getCibaExpiresIn();
         cibaInterval = rep.getCiba().getCibaInterval();
@@ -795,6 +797,7 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
 
     private void restoreCIBAPolicy() {
         RealmRepresentation rep = testRealm().toRepresentation();
+        rep.getCiba().setCibaFlow(cibaFlow);
         rep.getCiba().setCibaBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
         rep.getCiba().setCibaExpiresIn(cibaExpiresIn);
         rep.getCiba().setCibaInterval(cibaInterval);
@@ -805,18 +808,33 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
     @Test
     public void testCIBAPolicy() {
         try {
+            // null input - default values used
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaBackchannelTokenDeliveryMode("ping");
-            rep.getCiba().setCibaExpiresIn(360);
-            rep.getCiba().setCibaInterval(10);
-            rep.getCiba().setCibaAuthRequestedUserHint("login_hint_token");
+            rep.getCiba().setCibaBackchannelTokenDeliveryMode(null);
+            rep.getCiba().setCibaExpiresIn(null);
+            rep.getCiba().setCibaInterval(null);
+            rep.getCiba().setCibaAuthRequestedUserHint(null);
             testRealm().update(rep);
 
             rep = testRealm().toRepresentation();
-            Assert.assertThat(rep.getCiba().getCibaBackchannelTokenDeliveryMode(), is(equalTo("ping")));
-            Assert.assertThat(rep.getCiba().getCibaExpiresIn(), is(equalTo(360)));
-            Assert.assertThat(rep.getCiba().getCibaInterval(), is(equalTo(10)));
-            Assert.assertThat(rep.getCiba().getCibaAuthRequestedUserHint(), is(equalTo("login_hint_token")));
+            Assert.assertThat(rep.getCiba().getCibaBackchannelTokenDeliveryMode(), is(equalTo("poll")));
+            Assert.assertThat(rep.getCiba().getCibaExpiresIn(), is(equalTo(120)));
+            Assert.assertThat(rep.getCiba().getCibaInterval(), is(equalTo(0)));
+            Assert.assertThat(rep.getCiba().getCibaAuthRequestedUserHint(), is(equalTo("login_hint")));
+
+            // valid input
+            rep = backupCIBAPolicy();
+            rep.getCiba().setCibaBackchannelTokenDeliveryMode("poll");
+            rep.getCiba().setCibaExpiresIn(736);
+            rep.getCiba().setCibaInterval(7);
+            rep.getCiba().setCibaAuthRequestedUserHint("login_hint");
+            testRealm().update(rep);
+
+            rep = testRealm().toRepresentation();
+            Assert.assertThat(rep.getCiba().getCibaBackchannelTokenDeliveryMode(), is(equalTo("poll")));
+            Assert.assertThat(rep.getCiba().getCibaExpiresIn(), is(equalTo(736)));
+            Assert.assertThat(rep.getCiba().getCibaInterval(), is(equalTo(7)));
+            Assert.assertThat(rep.getCiba().getCibaAuthRequestedUserHint(), is(equalTo("login_hint")));
         } finally {
             restoreCIBAPolicy();
         }

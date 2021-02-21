@@ -76,7 +76,7 @@ public class CIBAAuthReqIdParser {
         try {
             authReqIdJwt = getAuthReqIdJwt(session, encodedJwt);
         } catch (Exception e) {
-            logger.info("illegal format of auth_req_id : e.getMessage() = " + e.getMessage());
+            logger.warnf("illegal format of auth_req_id : e.getMessage() = %s", e.getMessage());
             return (new ParseResult(null)).illegalAuthReqId();
         }
         ParseResult result = new ParseResult(authReqIdJwt);
@@ -92,7 +92,7 @@ public class CIBAAuthReqIdParser {
                 if (blocker.isExpiredEarlyAccessBlocker()) {} // need to do first
                 else if (blocker.isNotFoundEarlyAccessBlocker()) {}
                 else {
-                    logger.info("too early access not waiting interval");
+                    logger.warnf("too early access not waiting interval : clientId = %s", result.authReqIdJwt.getIssuedFor());
                     result.throttlingId = throttlingId;
                     return result.tooEarlyAccess();
                 }
@@ -102,32 +102,32 @@ public class CIBAAuthReqIdParser {
         // get corresponding Decoupled Authentication Result entry
         DecoupledAuthnResultParser.ParseResult parseAuthResult =  DecoupledAuthnResultParser.parseDecoupledAuthnResult(session, result.authReqIdJwt.getAuthResultId());
         if (parseAuthResult.isNotYetDecoupledAuthnResult()) {
-            logger.info("not yet authenticated by Authentication Device or auth_req_id has already been used to get tokens");
+            logTrace("not yet authenticated by Authentication Device or auth_req_id has already been used to get tokens.", result);
             return result.userNotyetAuthenticatedOrAuthReqIdDuplicatedUse();
         }
 
         if (parseAuthResult.isExpiredDecoupledAuthnResult()) {
-            logger.info("decoupled authentication expired");
+            logTrace("expired.", result);
             return result.expiredAuthentication();
         }
 
         String parseAuthResultStatus = parseAuthResult.decoupledAuthnResultData().getStatus();
         if (parseAuthResultStatus.equals(DecoupledAuthStatus.SUCCEEDED)) {
-            logger.info("decoupled authentication succeeded");
+            logTrace("succeeded.", result);
         } else if (parseAuthResultStatus.equals(DecoupledAuthStatus.FAILED)) {
-            logger.info("decoupled authentication failed");
+            logTrace("failed.", result);
             return result.failedAuthentication();
         } else if (parseAuthResultStatus.equals(DecoupledAuthStatus.CANCELLED)) {
-            logger.info("decoupled authentication cancelled");
+            logTrace("cancelled.", result);
             return result.cancelledAuthentication();
         } else if (parseAuthResultStatus.equals(DecoupledAuthStatus.UNAUTHORIZED)) {
-            logger.info("decoupled authentication unauthorized");
+            logTrace("unauthorized.", result);
             return result.unauthorizedAuthentication();
         } else if (parseAuthResultStatus.equals(DecoupledAuthStatus.DIFFERENT)) {
-            logger.info("decoupled authentication different user authenticated");
+            logTrace("different user authenticated.", result);
             return result.differentUserAuthenticated();
         } else {
-            logger.info("decoupled authentication unknown event happened");
+            logTrace("unknown event happened.", result);
             return result.unknownEventHappendAuthentication();
         }
 
@@ -138,7 +138,7 @@ public class CIBAAuthReqIdParser {
             // Needed to track if code is invalid or was already used.
             userSession = session.sessions().getUserSession(realm, userSessionId);
             if (userSession == null) {
-                logger.warn("authenticated but corresponding user session not found");
+                logger.warnf("authenticated but corresponding user session not found. clientId = %s, authResultId = %s", result.clientId, result.authReqIdJwt.getAuthResultId());
                 return result.userSessionNotFound();
             }
         }
@@ -151,6 +151,10 @@ public class CIBAAuthReqIdParser {
         event.session(userSessionId);
 
         return result;
+    }
+
+    private static void logTrace(String message, ParseResult result) {
+        logger.tracef("CIBA Grant :: decoupled authentication %s clientId = %s, authResultId = %s", message, result.authReqIdJwt.getIssuedFor(), result.authReqIdJwt.getAuthResultId());
     }
 
     public static class ParseResult {

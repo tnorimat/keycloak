@@ -24,7 +24,7 @@ public class EarlyAccessBlocker {
 
     private final int expiration;
 
-    public EarlyAccessBlocker(int expiration, int interval) {
+    public EarlyAccessBlocker(int expiration) {
         this.expiration = expiration;
     }
 

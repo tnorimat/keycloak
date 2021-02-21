@@ -22,15 +22,13 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.spi.HttpRequest;
-import org.jboss.resteasy.spi.HttpResponse;
+import org.jboss.resteasy.util.HttpHeaderNames;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.authentication.AuthenticationProcessor;
 import org.keycloak.common.ClientConnection;
@@ -76,15 +74,6 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
     protected ClientModel client;
     protected Map<String, String> clientAuthAttributes;
 
-    @Context
-    protected HttpHeaders headers;
-    @Context
-    protected HttpRequest httpRequest;
-    @Context
-    protected HttpResponse httpResponse;
-    @Context
-    protected ClientConnection clientConnection;
-
     protected Cors cors;
 
     public DecoupledAuthenticationProviderBase(KeycloakSession session) {
@@ -107,36 +96,31 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
     @Produces(MediaType.APPLICATION_JSON)
     public Response processDecoupledAuthnResult() {
         event.event(EventType.LOGIN);
-        headers = session.getContext().getContextObject(HttpHeaders.class);
-        httpRequest = session.getContext().getContextObject(HttpRequest.class);
-        httpResponse = session.getContext().getContextObject(HttpResponse.class);
-        clientConnection = session.getContext().getContextObject(ClientConnection.class);
+
+        HttpRequest httpRequest = session.getContext().getContextObject(HttpRequest.class);
+        ClientConnection clientConnection = session.getContext().getContextObject(ClientConnection.class);
 
         cors = Cors.add(httpRequest).auth().allowedMethods("POST").auth().exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
         formParams = httpRequest.getDecodedFormParameters();
 
-        checkSsl();
+        checkSsl(clientConnection);
         checkRealm();
-        // here Client Model of Decoupled Authentication Server is set to this class member "client".
-        // this will be overridden by Client Model of CD(Consumption Device) in verifyDecoupledAuthnResult().
         checkClient();
-        logger.info(" client_id = " + client.getClientId());
-
-        MultivaluedMap<String, Object> outputHeaders = httpResponse.getOutputHeaders();
-        outputHeaders.putSingle("Cache-Control", "no-store");
-        outputHeaders.putSingle("Pragma", "no-cache");
 
         Response response = verifyDecoupledAuthnResult();
         if (response != null) return response;
 
-        setupSessions();
+        setupSessions(httpRequest, clientConnection);
 
         persistDecoupledAuthenticationResult(DecoupledAuthStatus.SUCCEEDED);
 
-        return cors.builder(Response.ok("", MediaType.APPLICATION_JSON_TYPE)).build();
+        return cors.builder(Response.ok("", MediaType.APPLICATION_JSON_TYPE)
+                .header(HttpHeaderNames.CACHE_CONTROL, "no-store")
+                .header(HttpHeaderNames.PRAGMA, "no-cache"))
+                .build();
     }
 
-    private void setupSessions() {
+    private void setupSessions(HttpRequest httpRequest, ClientConnection clientConnection) {
         RootAuthenticationSessionModel rootAuthSession = session.authenticationSessions().createRootAuthenticationSession(realm, getUserSessionIdWillBeCreated());
         // here Client Model of CD(Consumption Device) needs to be used to bind its Client Session with User Session.
         AuthenticationSessionModel authSession = rootAuthSession.createAuthenticationSession(client);
@@ -145,7 +129,6 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
         authSession.setAction(AuthenticatedClientSessionModel.Action.AUTHENTICATE.name());
         authSession.setClientNote(OIDCLoginProtocol.ISSUER, Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
         authSession.setClientNote(OIDCLoginProtocol.SCOPE_PARAM, getScope());
-        logger.info(" specified scopes in backchannel authentication endpoint = " + getScope());
 
         // authentication
         AuthenticationFlowModel flow = AuthenticationFlowResolver.resolveCIBAFlow(authSession);
@@ -175,41 +158,31 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
         if (userSession == null) {
             event.error(Errors.USER_SESSION_NOT_FOUND);
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, "User session is not found", Response.Status.BAD_REQUEST);
-        } else {
-            logger.infof(" user session id =  %s, username = %s", userSession.getId(), userSession.getUser().getUsername());
         }
-        updateUserSessionFromClientAuth(userSession);
-
-        logger.infof("  Created User Session's id                            = %s", userSession.getId());
-        logger.infof("  Submitted in advance User Session ID Will Be Created = %s", getUserSessionIdWillBeCreated());
+        userSession.getNotes().putAll(clientAuthAttributes);
+        logger.tracef("CIBA Grant :: specified scopes in backchannel authentication endpoint = %s, Created User Session's id = %s, Submitted in advance User Session ID Will Be Created = %s, username = %s", getScope(), userSession.getId(), getUserSessionIdWillBeCreated(), userSession.getUser().getUsername());
 
         // authorization (consent)
         UserConsentModel grantedConsent = session.users().getConsentByClient(realm, user.getId(), client.getId());
         if (grantedConsent == null) {
             grantedConsent = new UserConsentModel(client);
             session.users().addConsent(realm, user.getId(), grantedConsent);
-            logger.info("  Consent updated : ");
-            grantedConsent.getGrantedClientScopes().forEach(i->logger.info(i.getName()));
+            grantedConsent.getGrantedClientScopes().forEach(i->logger.tracef("CIBA Grant :: Consent granted. %s", i.getName()));
         }
 
         boolean updateConsentRequired = false;
 
         for (String clientScopeId : authSession.getClientScopes()) {
             ClientScopeModel clientScope = KeycloakModelUtils.findClientScopeById(realm, client, clientScopeId);
-            if (clientScope != null) {
-                if (!grantedConsent.isClientScopeGranted(clientScope) && clientScope.isDisplayOnConsentScreen()) {
-                    grantedConsent.addGrantedClientScope(clientScope);
-                    updateConsentRequired = true;
-                }
-            } else {
-                logger.warnf("Client scope or client with ID '%s' not found", clientScopeId);
+            if (clientScope != null && !grantedConsent.isClientScopeGranted(clientScope) && clientScope.isDisplayOnConsentScreen()) {
+                grantedConsent.addGrantedClientScope(clientScope);
+                updateConsentRequired = true;
             }
         }
 
         if (updateConsentRequired) {
             session.users().updateConsent(realm, user.getId(), grantedConsent);
-            logger.info("  Consent granted : ");
-            grantedConsent.getGrantedClientScopes().forEach(i->logger.info(i.getName()));
+            grantedConsent.getGrantedClientScopes().forEach(i->logger.tracef("CIBA Grant :: Consent updated. %s", i.getName()));
         }
 
         event.detail(Details.CONSENT, Details.CONSENT_VALUE_CONSENT_GRANTED);
@@ -231,13 +204,7 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
 
     abstract protected Response verifyDecoupledAuthnResult();
 
-    private void updateUserSessionFromClientAuth(UserSessionModel userSession) {
-        for (Map.Entry<String, String> attr : clientAuthAttributes.entrySet()) {
-            userSession.setNote(attr.getKey(), attr.getValue());
-        }
-    }
-
-    private void checkSsl() {
+    private void checkSsl(ClientConnection clientConnection) {
         if (!session.getContext().getUri().getBaseUri().getScheme().equals("https") && realm.getSslRequired().isRequired(clientConnection)) {
             throw new CorsErrorResponseException(cors.allowAllOrigins(), OAuthErrorException.INVALID_REQUEST, "HTTPS required", Response.Status.FORBIDDEN);
         }

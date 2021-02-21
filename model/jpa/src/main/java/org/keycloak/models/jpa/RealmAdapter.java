@@ -26,6 +26,7 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.models.jpa.entities.*;
 import org.keycloak.models.utils.ComponentUtil;
+import org.keycloak.models.utils.DefaultAuthenticationFlows;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.utils.StringUtil;
 
@@ -1053,29 +1054,36 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
     public CIBAPolicy getCIBAPolicy() {
         CIBAPolicy policy = new CIBAPolicy();
 
-        String backchannelTokenDeliveryMode = getAttribute(RealmAttributes.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE);
-        if (StringUtil.isBlank(backchannelTokenDeliveryMode))
-            backchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
-        policy.setBackchannelTokenDeliveryMode(backchannelTokenDeliveryMode);
+        policy.setCibaFlow(getAttribute(RealmAttributes.CIBA_AUTHENTICATION_FLOW, DefaultAuthenticationFlows.CIBA_FLOW));
+
+        policy.setBackchannelTokenDeliveryMode(getAttribute(RealmAttributes.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE, 
+                Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE));
 
         String expiresIn = getAttribute(RealmAttributes.CIBA_EXPIRES_IN);
-        if (StringUtil.isNotBlank(expiresIn)) policy.setExpiresIn(Integer.parseInt(expiresIn));
-        else policy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
+        if (StringUtil.isNotBlank(expiresIn)) {
+            policy.setExpiresIn(Integer.parseInt(expiresIn));
+        } else {
+            policy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
+        }
 
         String interval = getAttribute(RealmAttributes.CIBA_INTERVAL);
-        if (StringUtil.isNotBlank(interval)) policy.setInterval(Integer.parseInt(interval));
-        else policy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
+        if (StringUtil.isNotBlank(interval)) {
+            policy.setInterval(Integer.parseInt(interval));
+        } else {
+            policy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
+        }
 
-        String authRequestedUserHint = getAttribute(RealmAttributes.CIBA_AUTH_REQUESTED_USER_HINT);
-        if (StringUtil.isBlank(authRequestedUserHint))
-            authRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
-        policy.setAuthRequestedUserHint(authRequestedUserHint);
+        policy.setAuthRequestedUserHint(getAttribute(RealmAttributes.CIBA_AUTH_REQUESTED_USER_HINT,
+                Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT));
 
         return policy;
     }
 
     @Override
     public void setCIBAPolicy(CIBAPolicy policy) {
+        String cibaFlow = policy.getCibaFlow();
+        setAttribute(RealmAttributes.CIBA_AUTHENTICATION_FLOW, cibaFlow);
+
         String backchannelTokenDeliveryMode = policy.getBackchannelTokenDeliveryMode();
         setAttribute(RealmAttributes.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE, backchannelTokenDeliveryMode);
 

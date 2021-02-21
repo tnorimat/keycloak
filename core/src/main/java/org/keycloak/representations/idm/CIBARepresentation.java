@@ -19,10 +19,19 @@ package org.keycloak.representations.idm;
 
 public class CIBARepresentation {
 
+    protected String cibaFlow;
     protected String cibaBackchannelTokenDeliveryMode;
     protected Integer cibaExpiresIn;
     protected Integer cibaInterval;
     protected String cibaAuthRequestedUserHint;
+
+    public String getCibaFlow() {
+        return cibaFlow;
+    }
+
+    public void setCibaFlow(String cibaFlow) {
+        this.cibaFlow = cibaFlow;
+    }
 
     public String getCibaBackchannelTokenDeliveryMode() {
         return cibaBackchannelTokenDeliveryMode;

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -553,24 +554,21 @@ public class RepresentationToModel {
     private static CIBAPolicy convertCIBARepresentationToPolicy(CIBARepresentation cibaRep) {
         CIBAPolicy cibaPolicy = new CIBAPolicy();
         if (cibaRep != null) {
-            String cibaBackchannelTokenDeliveryMode = cibaRep.getCibaBackchannelTokenDeliveryMode();
-            if (StringUtil.isBlank(cibaBackchannelTokenDeliveryMode))
-                cibaBackchannelTokenDeliveryMode = Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
-            cibaPolicy.setBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
-
-            Integer cibaExpiresIn = cibaRep.getCibaExpiresIn();
-            if (cibaExpiresIn != null) cibaPolicy.setExpiresIn(cibaExpiresIn);
-            else cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
-
-            Integer cibaInterval = cibaRep.getCibaInterval();
-            if (cibaInterval != null) cibaPolicy.setInterval(cibaInterval);
-            else cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
-
-            String cibaAuthRequestedUserHint = cibaRep.getCibaAuthRequestedUserHint();
-            if (StringUtil.isBlank(cibaAuthRequestedUserHint))
-                cibaAuthRequestedUserHint = Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
-            cibaPolicy.setAuthRequestedUserHint(cibaAuthRequestedUserHint);
+            cibaPolicy.setCibaFlow(Optional.ofNullable(cibaRep.getCibaFlow())
+                    .filter(StringUtil::isNotBlank)
+                    .orElse(DefaultAuthenticationFlows.CIBA_FLOW));
+            cibaPolicy.setBackchannelTokenDeliveryMode(Optional.ofNullable(cibaRep.getCibaBackchannelTokenDeliveryMode())
+                    .filter(StringUtil::isNotBlank)
+                    .orElse(Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE));
+            cibaPolicy.setExpiresIn(Optional.ofNullable(cibaRep.getCibaExpiresIn())
+                    .orElse(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN));
+            cibaPolicy.setInterval(Optional.ofNullable(cibaRep.getCibaInterval())
+                    .orElse(Constants.DEFAULT_CIBA_POLICY_INTERVAL));
+            cibaPolicy.setAuthRequestedUserHint(Optional.ofNullable(cibaRep.getCibaAuthRequestedUserHint())
+                    .filter(StringUtil::isNotBlank)
+                    .orElse(Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT));
         } else {
+            cibaPolicy.setCibaFlow(DefaultAuthenticationFlows.CIBA_FLOW);
             cibaPolicy.setBackchannelTokenDeliveryMode(Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE);
             cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
             cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
@@ -845,7 +843,7 @@ public class RepresentationToModel {
     }
 
     private static void handleCibaFlowIfApplicable(RealmModel newRealm, RealmRepresentation rep) {
-        if (rep.getCibaFlow() == null) {
+        if (rep.getCiba() == null || rep.getCiba().getCibaFlow() == null) {
             AuthenticationFlowModel cibaFlowModel = newRealm.getFlowByAlias(DefaultAuthenticationFlows.CIBA_FLOW);
             if (cibaFlowModel != null) {
                 newRealm.setCIBAFlow(cibaFlowModel);
@@ -853,7 +851,7 @@ public class RepresentationToModel {
                 DefaultAuthenticationFlows.cibaFlow(newRealm);
             }
         } else {
-            newRealm.setCIBAFlow(newRealm.getFlowByAlias(rep.getCibaFlow()));
+            newRealm.setCIBAFlow(newRealm.getFlowByAlias(rep.getCiba().getCibaFlow()));
         }
     }
 
@@ -1214,6 +1212,7 @@ public class RepresentationToModel {
 
         CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep.getCiba());
         realm.setCIBAPolicy(cibaPolicy);
+        realm.setCIBAFlow(realm.getFlowByAlias(cibaPolicy.getCibaFlow()));
 
         if (rep.getSmtpServer() != null) {
             Map<String, String> config = new HashMap(rep.getSmtpServer());
@@ -1255,9 +1254,7 @@ public class RepresentationToModel {
         if (rep.getDockerAuthenticationFlow() != null) {
             realm.setDockerAuthenticationFlow(realm.getFlowByAlias(rep.getDockerAuthenticationFlow()));
         }
-        if (rep.getCibaFlow() != null) {
-            realm.setCIBAFlow(realm.getFlowByAlias(rep.getCibaFlow()));
-        }
+
     }
 
     // Basic realm stuff

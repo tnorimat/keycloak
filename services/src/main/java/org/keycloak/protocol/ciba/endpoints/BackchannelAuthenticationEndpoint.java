@@ -30,6 +30,7 @@ import javax.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.HttpResponse;
+import org.jboss.resteasy.util.HttpHeaderNames;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.Profile;
@@ -107,25 +108,20 @@ public class BackchannelAuthenticationEndpoint {
         checkRealm();
         checkClient();
         UserModel user = checkUser(request);
-        logger.info(" client_id = " + client.getClientId());
-        logger.info(" consent required = " + client.isConsentRequired());
-
-        MultivaluedMap<String, Object> outputHeaders = httpResponse.getOutputHeaders();
-        outputHeaders.putSingle("Cache-Control", "no-store");
-        outputHeaders.putSingle("Pragma", "no-cache");
+        logger.tracef("CIBA Grant :: client_id = %s, isConsentRequired = %s", client.getClientId(), client.isConsentRequired());
 
         // create Auth Result's ID
         // Auth Result stands for authentication result by AD(Authentication Device).
         // By including it in Auth Req ID, keycloak can find Auth Result corresponding to Auth Req ID on Token Endpoint.
         String authResultId = UUID.randomUUID().toString();
 
-        // create auth_req_id and store Auth Req ID as its representation
         // UserSession's ID will become userSessionIdWillBeCreated which make it easy for searching UserSession on TokenEndpoint afterwards
         String userSessionIdWillBeCreated = getUserSessionIdWillBeCreated();
 
+        // create JWE encoded auth_req_id from Auth Req ID.
         int interval = policy.getInterval();
-        String throttlingId = null;
-        if (interval > 0) throttlingId = UUID.randomUUID().toString();
+        int expiresIn = policy.getExpiresIn();
+        String throttlingId = (interval > 0) ? UUID.randomUUID().toString() : null;
         CIBAAuthReqId authReqIdJwt = new CIBAAuthReqId();
         authReqIdJwt.id(KeycloakModelUtils.generateId());
         authReqIdJwt.setScope(request.getScope());
@@ -136,29 +132,33 @@ public class BackchannelAuthenticationEndpoint {
         authReqIdJwt.issuer(Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
         authReqIdJwt.audience(authReqIdJwt.getIssuer());
         authReqIdJwt.subject(user.getId());
-        authReqIdJwt.exp(Long.valueOf(Time.currentTime() + policy.getExpiresIn()));
+        authReqIdJwt.exp(Long.valueOf(Time.currentTime() + expiresIn));
         authReqIdJwt.issuedFor(client.getClientId());
         String authReqId = CIBAAuthReqIdParser.persistAuthReqId(session, authReqIdJwt);
 
         // for access throttling
         if (throttlingId != null) {
-            logger.info("  Access throttling : next token request must be after " + interval + " sec.");
-            EarlyAccessBlocker earlyAccessBlockerData = new EarlyAccessBlocker(Time.currentTime() + interval, interval);
-            EarlyAccessBlockerParser.persistEarlyAccessBlocker(session, throttlingId.toString(), earlyAccessBlockerData, interval);
+            EarlyAccessBlocker earlyAccessBlockerData = new EarlyAccessBlocker(Time.currentTime() + interval);
+            EarlyAccessBlockerParser.persistEarlyAccessBlocker(session, throttlingId, earlyAccessBlockerData, interval);
+            logger.tracef("CIBA Grant :: Access throttling : next token request must be after %d sec.", interval);
         }
 
         DecoupledAuthenticationProvider provider = session.getProvider(DecoupledAuthenticationProvider.class);
         if (provider == null) {
             throw new RuntimeException("CIBA Decoupled Authentication Provider not setup properly.");
         }
-        provider.doBackchannelAuthentication(client, request, policy.getExpiresIn(), authResultId, userSessionIdWillBeCreated);
+        provider.doBackchannelAuthentication(client, request, expiresIn, authResultId, userSessionIdWillBeCreated);
 
         ObjectNode response = JsonSerialization.createObjectNode();
-        response.put(CIBAConstants.AUTH_REQ_ID, authReqId);
-        response.put(CIBAConstants.EXPIRES_IN, policy.getExpiresIn());
-        if (policy.getInterval() > 0) response.put(CIBAConstants.INTERVAL, policy.getInterval());
+        response.put(CIBAConstants.AUTH_REQ_ID, authReqId)
+                .put(CIBAConstants.EXPIRES_IN, expiresIn);
+        if (interval > 0) response.put(CIBAConstants.INTERVAL, interval);
         try {
-            return Response.ok(JsonSerialization.writeValueAsBytes(response)).type(MediaType.APPLICATION_JSON_TYPE).build();
+            return Response.ok(JsonSerialization.writeValueAsBytes(response))
+                    .header(HttpHeaderNames.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaderNames.PRAGMA, "no-cache")
+                    .type(MediaType.APPLICATION_JSON_TYPE)
+                    .build();
         } catch (IOException e) {
             throw new RuntimeException("Error creating Backchannel Authentication response.", e);
         }
@@ -172,16 +172,15 @@ public class BackchannelAuthenticationEndpoint {
         if (scope == null) throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "missing parameter : scope", Response.Status.BAD_REQUEST);
         request.setScope(scope);
 
-        logger.info("  scope = " + request.getScope());
-
         String authRequestedUserHint = realm.getCIBAPolicy().getAuthRequestedUserHint();
-        logger.info("  authRequestedUserHint = " + authRequestedUserHint);
+        logger.tracef("CIBA Grant :: scope = %s, authRequestedUserHint = %s ", request.getScope(), authRequestedUserHint);
+
         String userHint = null;
         if (authRequestedUserHint.equals(CIBAConstants.LOGIN_HINT)) {
             userHint = params.getFirst(CIBAConstants.LOGIN_HINT);
             if (userHint == null) throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "missing parameter : login_hint", Response.Status.BAD_REQUEST);
             request.setLoginHint(userHint);
-            logger.info("  login_hint = " + request.getLoginHint());
+            logger.tracef("CIBA Grant :: login_hint = %s", request.getLoginHint());
         } else if (authRequestedUserHint.equals(CIBAConstants.ID_TOKEN_HINT)) {
             userHint = params.getFirst(CIBAConstants.ID_TOKEN_HINT);
             if (userHint == null) throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "missing parameter : id_token_hint", Response.Status.BAD_REQUEST);
@@ -197,7 +196,7 @@ public class BackchannelAuthenticationEndpoint {
         String bindingMessage = params.getFirst(CIBAConstants.BINDING_MESSAGE);
         if (bindingMessage != null) {
             request.setBindingMessage(bindingMessage);
-            logger.info("  binding_message = " + request.getBindingMessage());
+            logger.tracef("CIBA Grant :: binding_message = %s", bindingMessage);
         }
 
         return request;

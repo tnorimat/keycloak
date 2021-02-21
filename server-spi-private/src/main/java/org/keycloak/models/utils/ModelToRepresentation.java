@@ -403,6 +403,7 @@ public class ModelToRepresentation {
 
         CIBAPolicy cibaPolicy = realm.getCIBAPolicy();
         CIBARepresentation cibaRep = new CIBARepresentation();
+        cibaRep.setCibaFlow(realm.getCIBAFlow().getAlias());
         cibaRep.setCibaBackchannelTokenDeliveryMode(cibaPolicy.getBackchannelTokenDeliveryMode());
         cibaRep.setCibaExpiresIn(cibaPolicy.getExpiresIn());
         cibaRep.setCibaInterval(cibaPolicy.getInterval());
@@ -415,7 +416,6 @@ public class ModelToRepresentation {
         if (realm.getResetCredentialsFlow() != null) rep.setResetCredentialsFlow(realm.getResetCredentialsFlow().getAlias());
         if (realm.getClientAuthenticationFlow() != null) rep.setClientAuthenticationFlow(realm.getClientAuthenticationFlow().getAlias());
         if (realm.getDockerAuthenticationFlow() != null) rep.setDockerAuthenticationFlow(realm.getDockerAuthenticationFlow().getAlias());
-        if (realm.getCIBAFlow() != null) rep.setCibaFlow(realm.getCIBAFlow().getAlias());
 
         rep.setDefaultRole(toBriefRepresentation(realm.getDefaultRole()));
 

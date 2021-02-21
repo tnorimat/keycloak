@@ -335,7 +335,7 @@ public class TokenEndpoint {
             event.error(Errors.INVALID_CODE);
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "Missing parameter: " + CIBAConstants.AUTH_REQ_ID, Response.Status.BAD_REQUEST);
         }
-        logger.info(" authReqId = " + authReqId);
+        logger.tracev("CIBA Grant :: authReqId = {0}", authReqId);
 
         // after parsing CIBAAuthReqId, programs are the same as in codeToToken()
         CIBAAuthReqIdParser.ParseResult parseResult = CIBAAuthReqIdParser.parseAuthReqId(session, authReqId, realm, event);
@@ -491,8 +491,8 @@ public class TokenEndpoint {
         int penalty = isPenalty ? CIBAConstants.INTERVAL_PENALTY : 0;
         interval += penalty;
         interval = (interval >= CIBAConstants.INTERVAL_UPPERBOUND) ? CIBAConstants.INTERVAL_UPPERBOUND : interval;
-        logger.info("  Reset access throttling : next token request must be after " + interval + " sec.");
-        EarlyAccessBlocker earlyAccessBlocker = new EarlyAccessBlocker(Time.currentTime() + interval, interval);
+        logger.tracev("CIBA Grant :: Reset access throttling - next token request must be after {0} sec.", interval);
+        EarlyAccessBlocker earlyAccessBlocker = new EarlyAccessBlocker(Time.currentTime() + interval);
         EarlyAccessBlockerParser.persistEarlyAccessBlocker(session, throttlingId, earlyAccessBlocker, interval);
     }
 
