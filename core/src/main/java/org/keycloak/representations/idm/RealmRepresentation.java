@@ -139,9 +139,6 @@ public class RealmRepresentation {
     protected Boolean webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister;
     protected List<String> webAuthnPolicyPasswordlessAcceptableAaguids;
 
-    // CIBA policy
-    protected CIBARepresentation ciba;
-
     protected List<UserRepresentation> users;
     protected List<UserRepresentation> federatedUsers;
     protected List<ScopeMappingRepresentation> scopeMappings;
@@ -1156,15 +1153,6 @@ public class RealmRepresentation {
 
     public void setWebAuthnPolicyPasswordlessAcceptableAaguids(List<String> webAuthnPolicyPasswordlessAcceptableAaguids) {
         this.webAuthnPolicyPasswordlessAcceptableAaguids = webAuthnPolicyPasswordlessAcceptableAaguids;
-    }
-
-    // CIBA policy
-    public CIBARepresentation getCiba() {
-        return ciba;
-    }
-
-    public void setCiba(CIBARepresentation ciba) {
-        this.ciba = ciba;
     }
 
     public String getBrowserFlow() {

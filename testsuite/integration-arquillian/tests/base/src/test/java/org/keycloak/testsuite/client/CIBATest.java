@@ -29,6 +29,9 @@ import static org.keycloak.testsuite.arquillian.annotation.AuthServerContainerEx
 import static org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude.AuthServer.REMOTE;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -41,6 +44,7 @@ import org.keycloak.common.Profile;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
+import org.keycloak.models.CIBAPolicy;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.CIBAErrorCodes;
 import org.keycloak.protocol.ciba.decoupledauthn.DelegateDecoupledAuthenticationProviderFactory;
@@ -491,9 +495,10 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
             clientResource = ApiUtil.findClientByClientId(adminClient.realm(TEST_REALM_NAME), TEST_CLIENT_NAME);
             clientRep = clientResource.toRepresentation();
             prepareCIBASettings(clientResource, clientRep);
-
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaAuthRequestedUserHint(CIBAConstants.LOGIN_HINT_TOKEN);
+            Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT, CIBAConstants.LOGIN_HINT_TOKEN);
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             // user Backchannel Authentication Request
@@ -609,8 +614,10 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
 
             // set interval
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaExpiresIn(1200);
-            rep.getCiba().setCibaInterval(599);
+            Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_EXPIRES_IN, String.valueOf(1200));
+            attrMap.put(CIBAPolicy.CIBA_INTERVAL, String.valueOf(599));
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             // first user Decoupled Authentication Request
@@ -672,7 +679,9 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
             clientRep = clientResource.toRepresentation();
             prepareCIBASettings(clientResource, clientRep);
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaInterval(10);
+            Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_INTERVAL, String.valueOf(10));
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             // user Backchannel Authentication Request
@@ -739,7 +748,9 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
             clientRep = clientResource.toRepresentation();
             prepareCIBASettings(clientResource, clientRep);
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaInterval(10);
+            Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_INTERVAL, String.valueOf(10));
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             // user Backchannel Authentication Request
@@ -787,21 +798,24 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
     
     private RealmRepresentation backupCIBAPolicy() {
         RealmRepresentation rep = testRealm().toRepresentation();
-        cibaFlow = rep.getCiba().getCibaFlow();
-        cibaBackchannelTokenDeliveryMode = rep.getCiba().getCibaBackchannelTokenDeliveryMode();
-        cibaExpiresIn = rep.getCiba().getCibaExpiresIn();
-        cibaInterval = rep.getCiba().getCibaInterval();
-        cibaAuthRequestedUserHint = rep.getCiba().getCibaAuthRequestedUserHint();
+        Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+        cibaFlow = attrMap.get(CIBAPolicy.CIBA_AUTHENTICATION_FLOW_ALIAS);
+        cibaBackchannelTokenDeliveryMode = attrMap.get(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE);
+        cibaExpiresIn = Integer.parseInt(attrMap.get(CIBAPolicy.CIBA_EXPIRES_IN));
+        cibaInterval = Integer.parseInt(attrMap.get(CIBAPolicy.CIBA_INTERVAL));
+        cibaAuthRequestedUserHint = attrMap.get(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT);
         return rep;
     }
 
     private void restoreCIBAPolicy() {
         RealmRepresentation rep = testRealm().toRepresentation();
-        rep.getCiba().setCibaFlow(cibaFlow);
-        rep.getCiba().setCibaBackchannelTokenDeliveryMode(cibaBackchannelTokenDeliveryMode);
-        rep.getCiba().setCibaExpiresIn(cibaExpiresIn);
-        rep.getCiba().setCibaInterval(cibaInterval);
-        rep.getCiba().setCibaAuthRequestedUserHint(cibaAuthRequestedUserHint);
+        Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+        attrMap.put(CIBAPolicy.CIBA_AUTHENTICATION_FLOW_ALIAS, cibaFlow);
+        attrMap.put(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE, cibaBackchannelTokenDeliveryMode);
+        attrMap.put(CIBAPolicy.CIBA_EXPIRES_IN, String.valueOf(cibaExpiresIn));
+        attrMap.put(CIBAPolicy.CIBA_INTERVAL, String.valueOf(cibaInterval));
+        attrMap.put(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT, cibaAuthRequestedUserHint);
+        rep.setAttributes(attrMap);
         testRealm().update(rep);
     }
 
@@ -810,31 +824,37 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
         try {
             // null input - default values used
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaBackchannelTokenDeliveryMode(null);
-            rep.getCiba().setCibaExpiresIn(null);
-            rep.getCiba().setCibaInterval(null);
-            rep.getCiba().setCibaAuthRequestedUserHint(null);
+            Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_AUTHENTICATION_FLOW_ALIAS, null);
+            attrMap.put(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE, null);
+            attrMap.put(CIBAPolicy.CIBA_EXPIRES_IN, null);
+            attrMap.put(CIBAPolicy.CIBA_INTERVAL, null);
+            attrMap.put(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT, null);
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             rep = testRealm().toRepresentation();
-            Assert.assertThat(rep.getCiba().getCibaBackchannelTokenDeliveryMode(), is(equalTo("poll")));
-            Assert.assertThat(rep.getCiba().getCibaExpiresIn(), is(equalTo(120)));
-            Assert.assertThat(rep.getCiba().getCibaInterval(), is(equalTo(0)));
-            Assert.assertThat(rep.getCiba().getCibaAuthRequestedUserHint(), is(equalTo("login_hint")));
+            attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            Assert.assertThat(attrMap.get(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE), is(equalTo("poll")));
+            Assert.assertThat(Integer.parseInt(attrMap.get(CIBAPolicy.CIBA_EXPIRES_IN)), is(equalTo(120)));
+            Assert.assertThat(Integer.parseInt(attrMap.get(CIBAPolicy.CIBA_INTERVAL)), is(equalTo(0)));
+            Assert.assertThat(attrMap.get(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT), is(equalTo("login_hint")));
 
             // valid input
             rep = backupCIBAPolicy();
-            rep.getCiba().setCibaBackchannelTokenDeliveryMode("poll");
-            rep.getCiba().setCibaExpiresIn(736);
-            rep.getCiba().setCibaInterval(7);
-            rep.getCiba().setCibaAuthRequestedUserHint("login_hint");
+            attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE, "poll");
+            attrMap.put(CIBAPolicy.CIBA_EXPIRES_IN, String.valueOf(736));
+            attrMap.put(CIBAPolicy.CIBA_INTERVAL, String.valueOf(7));
+            attrMap.put(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT, "login_hint");
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             rep = testRealm().toRepresentation();
-            Assert.assertThat(rep.getCiba().getCibaBackchannelTokenDeliveryMode(), is(equalTo("poll")));
-            Assert.assertThat(rep.getCiba().getCibaExpiresIn(), is(equalTo(736)));
-            Assert.assertThat(rep.getCiba().getCibaInterval(), is(equalTo(7)));
-            Assert.assertThat(rep.getCiba().getCibaAuthRequestedUserHint(), is(equalTo("login_hint")));
+            Assert.assertThat(attrMap.get(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE), is(equalTo("poll")));
+            Assert.assertThat(Integer.parseInt(attrMap.get(CIBAPolicy.CIBA_EXPIRES_IN)), is(equalTo(736)));
+            Assert.assertThat(Integer.parseInt(attrMap.get(CIBAPolicy.CIBA_INTERVAL)), is(equalTo(7)));
+            Assert.assertThat(attrMap.get(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT), is(equalTo("login_hint")));
         } finally {
             restoreCIBAPolicy();
         }
@@ -1056,7 +1076,9 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
             prepareCIBASettings(clientResource, clientRep);
 
             RealmRepresentation rep = backupCIBAPolicy();
-            rep.getCiba().setCibaExpiresIn(60);
+            Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+            attrMap.put(CIBAPolicy.CIBA_EXPIRES_IN, String.valueOf(60));
+            rep.setAttributes(attrMap);
             testRealm().update(rep);
 
             // user Backchannel Authentication Request

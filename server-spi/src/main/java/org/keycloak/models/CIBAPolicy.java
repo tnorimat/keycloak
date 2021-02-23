@@ -20,11 +20,25 @@ import java.io.Serializable;
 
 public class CIBAPolicy implements Serializable {
 
-    private String cibaFlow;
-    private String backchannelTokenDeliveryMode = "poll";
-    private int expiresIn = 120;
-    private int interval = 0;
-    private String authRequestedUserHint = "login_hint";
+    // CIBA policy attribute key for persitent store
+    public static final String CIBA_AUTHENTICATION_FLOW_ALIAS = "cibaAuthenticationFlowAlias";
+    public static final String CIBA_BACKCHANNEL_TOKENDELIVERY_MODE = "cibaBackchannelTokenDeliveryMode";
+    public static final String CIBA_EXPIRES_IN = "cibaExpiresIn";
+    public static final String CIBA_INTERVAL = "cibaInterval";
+    public static final String CIBA_AUTH_REQUESTED_USER_HINT = "cibaAuthRequestedUserHint";
+
+    // CIBA policy default value
+    public static final String DEFAULT_CIBA_FLOW_ALIAS = "ciba";
+    public static final String DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE = "poll";
+    public static final int DEFAULT_CIBA_POLICY_EXPIRES_IN = 120;
+    public static final int DEFAULT_CIBA_POLICY_INTERVAL = 0;
+    public static final String DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT = "login_hint";
+
+    private String cibaFlow = DEFAULT_CIBA_FLOW_ALIAS;
+    private String backchannelTokenDeliveryMode = DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE;
+    private int expiresIn = DEFAULT_CIBA_POLICY_EXPIRES_IN;
+    private int interval = DEFAULT_CIBA_POLICY_INTERVAL;
+    private String authRequestedUserHint = DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT;
 
     public String getCibaFlow() {
         return cibaFlow;

@@ -167,7 +167,9 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
         if (grantedConsent == null) {
             grantedConsent = new UserConsentModel(client);
             session.users().addConsent(realm, user.getId(), grantedConsent);
-            grantedConsent.getGrantedClientScopes().forEach(i->logger.tracef("CIBA Grant :: Consent granted. %s", i.getName()));
+            if (logger.isTraceEnabled()) {
+                grantedConsent.getGrantedClientScopes().forEach(i->logger.tracef("CIBA Grant :: Consent granted. %s", i.getName()));
+            }
         }
 
         boolean updateConsentRequired = false;
@@ -182,7 +184,9 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
 
         if (updateConsentRequired) {
             session.users().updateConsent(realm, user.getId(), grantedConsent);
-            grantedConsent.getGrantedClientScopes().forEach(i->logger.tracef("CIBA Grant :: Consent updated. %s", i.getName()));
+            if (logger.isTraceEnabled()) {
+                grantedConsent.getGrantedClientScopes().forEach(i->logger.tracef("CIBA Grant :: Consent updated. %s", i.getName()));
+            }
         }
 
         event.detail(Details.CONSENT, Details.CONSENT_VALUE_CONSENT_GRANTED);

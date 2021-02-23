@@ -102,7 +102,6 @@ import org.keycloak.representations.idm.AuthenticationExecutionExportRepresentat
 import org.keycloak.representations.idm.AuthenticationExecutionRepresentation;
 import org.keycloak.representations.idm.AuthenticationFlowRepresentation;
 import org.keycloak.representations.idm.AuthenticatorConfigRepresentation;
-import org.keycloak.representations.idm.CIBARepresentation;
 import org.keycloak.representations.idm.ClaimRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientScopeRepresentation;
@@ -289,7 +288,7 @@ public class RepresentationToModel {
         webAuthnPolicy = getWebAuthnPolicyPasswordless(rep);
         newRealm.setWebAuthnPolicyPasswordless(webAuthnPolicy);
 
-        CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep.getCiba());
+        CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep);
         newRealm.setCIBAPolicy(cibaPolicy);
 
         Map<String, String> mappedFlows = importAuthenticationFlows(newRealm, rep);
@@ -551,28 +550,29 @@ public class RepresentationToModel {
         return webAuthnPolicy;
     }
 
-    private static CIBAPolicy convertCIBARepresentationToPolicy(CIBARepresentation cibaRep) {
+    private static CIBAPolicy convertCIBARepresentationToPolicy(RealmRepresentation rep) {
         CIBAPolicy cibaPolicy = new CIBAPolicy();
-        if (cibaRep != null) {
-            cibaPolicy.setCibaFlow(Optional.ofNullable(cibaRep.getCibaFlow())
+        if (rep != null && rep.getAttributes() != null) {
+            Map<String, String> attrMap = rep.getAttributes();
+            cibaPolicy.setCibaFlow(Optional.ofNullable(attrMap.get(CIBAPolicy.CIBA_AUTHENTICATION_FLOW_ALIAS))
                     .filter(StringUtil::isNotBlank)
-                    .orElse(DefaultAuthenticationFlows.CIBA_FLOW));
-            cibaPolicy.setBackchannelTokenDeliveryMode(Optional.ofNullable(cibaRep.getCibaBackchannelTokenDeliveryMode())
+                    .orElse(CIBAPolicy.DEFAULT_CIBA_FLOW_ALIAS));
+            cibaPolicy.setBackchannelTokenDeliveryMode(Optional.ofNullable(attrMap.get(CIBAPolicy.CIBA_BACKCHANNEL_TOKENDELIVERY_MODE))
                     .filter(StringUtil::isNotBlank)
-                    .orElse(Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE));
-            cibaPolicy.setExpiresIn(Optional.ofNullable(cibaRep.getCibaExpiresIn())
-                    .orElse(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN));
-            cibaPolicy.setInterval(Optional.ofNullable(cibaRep.getCibaInterval())
-                    .orElse(Constants.DEFAULT_CIBA_POLICY_INTERVAL));
-            cibaPolicy.setAuthRequestedUserHint(Optional.ofNullable(cibaRep.getCibaAuthRequestedUserHint())
+                    .orElse(CIBAPolicy.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE));
+            cibaPolicy.setExpiresIn(Integer.parseInt(Optional.ofNullable(attrMap.get(CIBAPolicy.CIBA_EXPIRES_IN))
+                    .orElse(String.valueOf(CIBAPolicy.DEFAULT_CIBA_POLICY_EXPIRES_IN))));
+            cibaPolicy.setInterval(Integer.parseInt(Optional.ofNullable(attrMap.get(CIBAPolicy.CIBA_INTERVAL))
+                    .orElse(String.valueOf(CIBAPolicy.DEFAULT_CIBA_POLICY_INTERVAL))));
+            cibaPolicy.setAuthRequestedUserHint(Optional.ofNullable(attrMap.get(CIBAPolicy.CIBA_AUTH_REQUESTED_USER_HINT))
                     .filter(StringUtil::isNotBlank)
-                    .orElse(Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT));
+                    .orElse(CIBAPolicy.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT));
         } else {
-            cibaPolicy.setCibaFlow(DefaultAuthenticationFlows.CIBA_FLOW);
-            cibaPolicy.setBackchannelTokenDeliveryMode(Constants.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE);
-            cibaPolicy.setExpiresIn(Constants.DEFAULT_CIBA_POLICY_EXPIRES_IN);
-            cibaPolicy.setInterval(Constants.DEFAULT_CIBA_POLICY_INTERVAL);
-            cibaPolicy.setAuthRequestedUserHint(Constants.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT);
+            cibaPolicy.setCibaFlow(CIBAPolicy.DEFAULT_CIBA_FLOW_ALIAS);
+            cibaPolicy.setBackchannelTokenDeliveryMode(CIBAPolicy.DEFAULT_CIBA_POLICY_TOKEN_DELIVERY_MODE);
+            cibaPolicy.setExpiresIn(CIBAPolicy.DEFAULT_CIBA_POLICY_EXPIRES_IN);
+            cibaPolicy.setInterval(CIBAPolicy.DEFAULT_CIBA_POLICY_INTERVAL);
+            cibaPolicy.setAuthRequestedUserHint(CIBAPolicy.DEFAULT_CIBA_POLICY_AUTH_REQUESTED_USER_HINT);
         }
         return cibaPolicy;
     }
@@ -843,15 +843,16 @@ public class RepresentationToModel {
     }
 
     private static void handleCibaFlowIfApplicable(RealmModel newRealm, RealmRepresentation rep) {
-        if (rep.getCiba() == null || rep.getCiba().getCibaFlow() == null) {
-            AuthenticationFlowModel cibaFlowModel = newRealm.getFlowByAlias(DefaultAuthenticationFlows.CIBA_FLOW);
-            if (cibaFlowModel != null) {
-                newRealm.setCIBAFlow(cibaFlowModel);
-            } else {
-                DefaultAuthenticationFlows.cibaFlow(newRealm);
-            }
+        Map<String, String> attrMap = Optional.ofNullable(rep.getAttributes()).orElse(new HashMap<>());
+        if (attrMap.get(CIBAPolicy.CIBA_AUTHENTICATION_FLOW_ALIAS) != null) {
+            newRealm.setCIBAFlow(newRealm.getFlowByAlias(attrMap.get(CIBAPolicy.CIBA_AUTHENTICATION_FLOW_ALIAS)));
+            return;
+        }
+        AuthenticationFlowModel cibaFlowModel = newRealm.getFlowByAlias(CIBAPolicy.DEFAULT_CIBA_FLOW_ALIAS);
+        if (cibaFlowModel != null) {
+            newRealm.setCIBAFlow(cibaFlowModel);
         } else {
-            newRealm.setCIBAFlow(newRealm.getFlowByAlias(rep.getCiba().getCibaFlow()));
+            DefaultAuthenticationFlows.cibaFlow(newRealm);
         }
     }
 
@@ -1210,7 +1211,7 @@ public class RepresentationToModel {
         webAuthnPolicy = getWebAuthnPolicyPasswordless(rep);
         realm.setWebAuthnPolicyPasswordless(webAuthnPolicy);
 
-        CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep.getCiba());
+        CIBAPolicy cibaPolicy = convertCIBARepresentationToPolicy(rep);
         realm.setCIBAPolicy(cibaPolicy);
         realm.setCIBAFlow(realm.getFlowByAlias(cibaPolicy.getCibaFlow()));
 

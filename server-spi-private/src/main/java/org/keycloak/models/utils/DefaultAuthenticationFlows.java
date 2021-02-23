@@ -20,6 +20,7 @@ package org.keycloak.models.utils;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.AuthenticationFlowModel;
 import org.keycloak.models.AuthenticatorConfigModel;
+import org.keycloak.models.CIBAPolicy;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RequiredCredentialModel;
 import org.keycloak.representations.idm.IdentityProviderRepresentation;
@@ -41,7 +42,6 @@ public class DefaultAuthenticationFlows {
     public static final String SAML_ECP_FLOW = "saml ecp";
     public static final String DOCKER_AUTH = "docker auth";
     public static final String HTTP_CHALLENGE_FLOW = "http challenge";
-    public static final String CIBA_FLOW = "ciba";
 
     public static final String CLIENT_AUTHENTICATION_FLOW = "clients";
     public static final String FIRST_BROKER_LOGIN_FLOW = "first broker login";
@@ -60,7 +60,7 @@ public class DefaultAuthenticationFlows {
         if (realm.getFlowByAlias(SAML_ECP_FLOW) == null) samlEcpProfile(realm);
         if (realm.getFlowByAlias(DOCKER_AUTH) == null) dockerAuthenticationFlow(realm);
         if (realm.getFlowByAlias(HTTP_CHALLENGE_FLOW) == null) httpChallengeFlow(realm);
-        if (realm.getFlowByAlias(CIBA_FLOW) == null) cibaFlow(realm);
+        if (realm.getFlowByAlias(CIBAPolicy.DEFAULT_CIBA_FLOW_ALIAS) == null) cibaFlow(realm);
     }
     public static void migrateFlows(RealmModel realm) {
         if (realm.getFlowByAlias(BROWSER_FLOW) == null) browserFlow(realm, true);
@@ -72,7 +72,7 @@ public class DefaultAuthenticationFlows {
         if (realm.getFlowByAlias(SAML_ECP_FLOW) == null) samlEcpProfile(realm);
         if (realm.getFlowByAlias(DOCKER_AUTH) == null) dockerAuthenticationFlow(realm);
         if (realm.getFlowByAlias(HTTP_CHALLENGE_FLOW) == null) httpChallengeFlow(realm);
-        if (realm.getFlowByAlias(CIBA_FLOW) == null) cibaFlow(realm);
+        if (realm.getFlowByAlias(CIBAPolicy.DEFAULT_CIBA_FLOW_ALIAS) == null) cibaFlow(realm);
     }
 
     public static void registrationFlow(RealmModel realm) {
@@ -383,7 +383,7 @@ public class DefaultAuthenticationFlows {
 
     public static void cibaFlow(RealmModel realm) {
         AuthenticationFlowModel grant = new AuthenticationFlowModel();
-        grant.setAlias(CIBA_FLOW);
+        grant.setAlias(CIBAPolicy.DEFAULT_CIBA_FLOW_ALIAS);
         grant.setDescription("OpenID Connect CIBA flow");
         grant.setProviderId("basic-flow");
         grant.setTopLevel(true);
