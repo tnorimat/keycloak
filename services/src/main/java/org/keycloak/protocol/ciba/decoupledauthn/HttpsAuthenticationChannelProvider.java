@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Red Hat, Inc. and/or its affiliates
+ * Copyright 2021 Red Hat, Inc. and/or its affiliates
  * and other contributors as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,21 +16,21 @@
  */
 package org.keycloak.protocol.ciba.decoupledauthn;
 
+import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.protocol.oidc.ext.OIDCExtProvider;
-import org.keycloak.protocol.oidc.ext.OIDCExtProviderFactory;
 
-public class DecoupledAuthnResultCallbackEndpointFactory implements OIDCExtProviderFactory {
+public class HttpsAuthenticationChannelProvider extends HttpAuthenticationChannelProvider {
 
-    public static final String PROVIDER_ID = "ciba-decoupled-authn-callback";
+    private static final Logger logger = Logger.getLogger(HttpsAuthenticationChannelProvider.class);
 
-    @Override
-    public OIDCExtProvider create(KeycloakSession session) {
-        return new HttpAuthenticationChannelProvider(session, null);
+    public HttpsAuthenticationChannelProvider(KeycloakSession session, String httpAuthenticationRequestUri) {
+        super(session, httpAuthenticationRequestUri);
     }
 
     @Override
-    public String getId() {
-        return PROVIDER_ID;
+    protected void checkAuthenticationChannel() {
+        if (httpAuthenticationRequestUri == null || !httpAuthenticationRequestUri.startsWith("https://")) {
+            throw new RuntimeException("Authentication Channel Request URI not set properly.");
+        }
     }
 }

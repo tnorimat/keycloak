@@ -16,17 +16,17 @@
  */
 package org.keycloak.protocol.ciba;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.keycloak.common.util.Time;
 import org.keycloak.protocol.ciba.utils.EarlyAccessBlocker;
 
 public class EarlyAccessBlockerStore {
 
-    private final static ConcurrentMap<String, EarlyAccessBlockerValueEntity> blockerCache = new ConcurrentHashMap<>();
+    private final static Map<String, EarlyAccessBlockerValueEntity> blockerCache = Collections.synchronizedMap(new LinkedHashMap<>());
 
     public static void put(String id, int lifespanSeconds, Map<String, String> blockerData) {
         EarlyAccessBlockerValueEntity blockerValue = new EarlyAccessBlockerValueEntity(blockerData);

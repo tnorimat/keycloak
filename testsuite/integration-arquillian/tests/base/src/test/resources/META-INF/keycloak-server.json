@@ -233,10 +233,10 @@
         }
     },
 
-    "decoupled-authn": {
-        "provider": "${keycloak.decoupled.authn.provider:delegate-decoupled-authn}",
-        "delegate-decoupled-authn": {
-          "decoupledAuthnRequestUri": "${keycloak.decoupled.auth.request.uri:https://localhost:8543/auth/realms/master/app/oidc-client-endpoints/request-decoupled-authentication}"
+    "decoupled-authn-channel": {
+        "provider": "${keycloak.decoupled.authn.provider:decoupled-http-authn-channel}",
+        "decoupled-http-authn-channel": {
+          "httpAuthnRequestUri": "${keycloak.decoupled.auth.request.uri:https://localhost:8543/auth/realms/master/app/oidc-client-endpoints/request-decoupled-authentication}"
         }
     },
 

@@ -60,7 +60,7 @@ import org.keycloak.models.Constants;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.decoupledauthn.DecoupledAuthnResultCallbackEndpointFactory;
-import org.keycloak.protocol.ciba.decoupledauthn.DelegateDecoupledAuthenticationProvider;
+import org.keycloak.protocol.ciba.decoupledauthn.HttpAuthenticationChannelProvider;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
 import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
@@ -747,9 +747,9 @@ public class OAuthClient {
             post.setHeader("Authorization", authorization);
 
             List<NameValuePair> parameters = new LinkedList<>();
-            parameters.add(new BasicNameValuePair(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_USER_INFO, userid));
-            parameters.add(new BasicNameValuePair(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_ID, decoupledAuthnBindingId));
-            parameters.add(new BasicNameValuePair(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_RESULT, authResult));
+            parameters.add(new BasicNameValuePair(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_USER_INFO, userid));
+            parameters.add(new BasicNameValuePair(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_ID, decoupledAuthnBindingId));
+            parameters.add(new BasicNameValuePair(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_RESULT, authResult));
 
             UrlEncodedFormEntity formEntity;
             try {

@@ -25,7 +25,7 @@ import org.keycloak.provider.Provider;
  * This interface is for Client Initiated Backchannel Authentication(CIBA).
  *
  */
-public interface DecoupledAuthenticationProvider extends Provider {
+public interface AuthenticationChannelProvider extends Provider {
 
     /**
      * Request the authentication(AuthN) and authorization(AuthZ) by an authentication device (AD) to the external entity called Decoupled Authentication Server.
@@ -35,6 +35,6 @@ public interface DecoupledAuthenticationProvider extends Provider {
      * @param authResultId identifies the result of AuthN and Authz by AD
      * @param userSessionIdWillBeCreated the id for UserSessionModel that will be created after completing AuthN and Authz by AD
      */
-    void doBackchannelAuthentication(ClientModel client, BackchannelAuthenticationRequest request, int expiresIn, String authResultId, String userSessionIdWillBeCreated);
+    void requestAuthentication(ClientModel client, BackchannelAuthenticationRequest request, int expiresIn, String authResultId, String userSessionIdWillBeCreated);
 
 }

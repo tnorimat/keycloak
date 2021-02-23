@@ -1,0 +1,2 @@
+org.keycloak.protocol.ciba.decoupledauthn.HttpAuthenticationChannelProviderFactory
+org.keycloak.protocol.ciba.decoupledauthn.HttpsAuthenticationChannelProviderFactory

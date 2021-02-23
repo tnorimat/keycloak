@@ -47,7 +47,7 @@ import org.keycloak.events.EventType;
 import org.keycloak.models.CIBAPolicy;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.CIBAErrorCodes;
-import org.keycloak.protocol.ciba.decoupledauthn.DelegateDecoupledAuthenticationProviderFactory;
+import org.keycloak.protocol.ciba.decoupledauthn.HttpAuthenticationChannelProviderFactory;
 import org.keycloak.protocol.ciba.utils.DecoupledAuthStatus;
 import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.representations.AccessToken;
@@ -134,7 +134,7 @@ public class CIBATest extends AbstractTestRealmKeycloakTest {
 
     @BeforeClass
     public static void setDecoupledAuthenticationRequestUri() {
-        System.setProperty("keycloak.decoupled.authn.provider", DelegateDecoupledAuthenticationProviderFactory.PROVIDER_ID);
+        System.setProperty("keycloak.decoupled.authn.provider", HttpAuthenticationChannelProviderFactory.PROVIDER_ID);
         System.setProperty("keycloak.decoupled.auth.request.uri", TestApplicationResourceUrls.clientDecoupledAuthenticationRequestUri());
     }
 

@@ -21,6 +21,7 @@ import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
@@ -45,22 +46,22 @@ import org.keycloak.protocol.ciba.utils.DecoupledAuthnResultParser;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.Urls;
 
-public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthenticationProviderBase {
+public class HttpAuthenticationChannelProvider extends HttpAuthenticationChannelProviderBase {
 
-    private static final Logger logger = Logger.getLogger(DelegateDecoupledAuthenticationProvider.class);
+    private static final Logger logger = Logger.getLogger(HttpAuthenticationChannelProvider.class);
 
-    private final String decoupledAuthenticationRequestUri;
+    protected final String httpAuthenticationRequestUri;
 
-    public DelegateDecoupledAuthenticationProvider(KeycloakSession session, String decoupledAuthenticationRequestUri) {
+    public HttpAuthenticationChannelProvider(KeycloakSession session, String httpAuthenticationRequestUri) {
         super(session);
-        this.decoupledAuthenticationRequestUri = decoupledAuthenticationRequestUri;
+        this.httpAuthenticationRequestUri = httpAuthenticationRequestUri;
     }
 
-    private String scope;
-    private String userSessionIdWillBeCreated;
-    private String userIdToBeAuthenticated;
-    private String authResultId;
-    private int expiration;
+    protected String scope;
+    protected String userSessionIdWillBeCreated;
+    protected String userIdToBeAuthenticated;
+    protected String authResultId;
+    protected int expiration;
 
     @Override
     protected String getScope() {
@@ -89,7 +90,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
 
     @Override
     protected Response verifyDecoupledAuthnResult() {
-        String decoupledAuthId = formParams.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_ID);
+        String decoupledAuthId = formParams.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_ID);
         ParseResult parseResult = parseDecoupledAuthId(session, decoupledAuthId, event);
 
         if (parseResult.isIllegalDecoupledAuthId()) {
@@ -116,14 +117,14 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         if (resolver == null) {
             throw new RuntimeException("CIBA Login User Resolver not setup properly.");
         }
-        String userIdAuthenticated = resolver.getUserFromInfoUsedByAuthentication(formParams.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_USER_INFO)).getId();
+        String userIdAuthenticated = resolver.getUserFromInfoUsedByAuthentication(formParams.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_USER_INFO)).getId();
         if (!userIdToBeAuthenticated.equals(userIdAuthenticated)) {
             event.error(Errors.DIFFERENT_USER_AUTHENTICATED);
             persistDecoupledAuthenticationResult(DecoupledAuthStatus.DIFFERENT);
-            return cors.builder(Response.ok("", MediaType.APPLICATION_JSON_TYPE)).build();
+            return cors.builder(Response.status(Status.BAD_REQUEST)).build();
         }
 
-        String authResult = formParams.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_RESULT);
+        String authResult = formParams.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_RESULT);
         if (authResult == null) {
             event.error(Errors.INVALID_INPUT);
             persistDecoupledAuthenticationResult(DecoupledAuthStatus.UNKNOWN);
@@ -147,7 +148,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
     }
 
     @Override
-    public void doBackchannelAuthentication(ClientModel client, BackchannelAuthenticationRequest request, int expiresIn, String authResultId, String userSessionIdWillBeCreated) {
+    public void requestAuthentication(ClientModel client, BackchannelAuthenticationRequest request, int expiresIn, String authResultId, String userSessionIdWillBeCreated) {
         // create JWT formatted/JWS signed/JWE encrypted Decoupled Auth ID by the same manner in creating auth_req_id
         // Decoupled Auth ID binds Backchannel Authentication Request with Authentication by AD(Authentication Device).
         // By including userSessionIdWillBeCreated. keycloak can create UserSession whose ID is userSessionIdWillBeCreated on Decoupled Authentication Callback Endpoint,
@@ -159,6 +160,9 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         // The following scopes should be displayed on AD(Authentication Device):
         // 1. scopes specified explicitly as query parameter in the authorization request
         // 2. scopes specified implicitly as default client scope in keycloak
+
+        checkAuthenticationChannel();
+
         CIBALoginUserResolver resolver = session.getProvider(CIBALoginUserResolver.class);
         if (resolver == null) {
             throw new RuntimeException("CIBA Login User Resolver not setup properly.");
@@ -196,7 +200,7 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
         String decoupledAuthId = CIBAAuthReqIdParser.persistAuthReqId(session, decoupledAuthIdJwt);
 
         try {
-            int status = SimpleHttp.doPost(decoupledAuthenticationRequestUri, session)
+            int status = SimpleHttp.doPost(httpAuthenticationRequestUri, session)
                 .param(DECOUPLED_AUTHN_ID, decoupledAuthId)
                 .param(DECOUPLED_AUTHN_USER_INFO, infoUsedByAuthentication)
                 .param(DECOUPLED_AUTHN_IS_CONSENT_REQUIRED, Boolean.toString(client.isConsentRequired()))
@@ -204,13 +208,19 @@ public class DelegateDecoupledAuthenticationProvider extends DecoupledAuthentica
                 .param(DECOUPLED_DEFAULT_CLIENT_SCOPE, defaultClientScope)
                 .param(CIBAConstants.BINDING_MESSAGE, request.getBindingMessage())
                 .asStatus();
-            if (status != 200) {
+            if (status != Status.CREATED.getStatusCode()) {
                 // To terminate CIBA flow, set Auth Result as unknown
                 DecoupledAuthnResult decoupledAuthnResult = new DecoupledAuthnResult(Time.currentTime() + expiresIn, DecoupledAuthStatus.UNKNOWN);
                 DecoupledAuthnResultParser.persistDecoupledAuthnResult(session, authResultId.toString(), decoupledAuthnResult, Time.currentTime() + expiresIn);
             }
         } catch (IOException ioe) {
             throw new RuntimeException("Decoupled Authn Request URI Access failed.", ioe);
+        }
+    }
+
+    protected void checkAuthenticationChannel() {
+        if (httpAuthenticationRequestUri == null || !(httpAuthenticationRequestUri.startsWith("http://") || httpAuthenticationRequestUri.startsWith("https://"))) {
+            throw new RuntimeException("Authentication Channel Request URI not set properly.");
         }
     }
 

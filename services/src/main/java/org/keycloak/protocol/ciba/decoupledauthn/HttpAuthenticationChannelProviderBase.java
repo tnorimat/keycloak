@@ -60,9 +60,9 @@ import org.keycloak.services.resources.Cors;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
 
-public abstract class DecoupledAuthenticationProviderBase implements DecoupledAuthenticationProvider, OIDCExtProvider {
+public abstract class HttpAuthenticationChannelProviderBase implements AuthenticationChannelProvider, OIDCExtProvider {
 
-    private static final Logger logger = Logger.getLogger(DecoupledAuthenticationProviderBase.class);
+    private static final Logger logger = Logger.getLogger(HttpAuthenticationChannelProviderBase.class);
 
     protected KeycloakSession session;
     protected EventBuilder event;
@@ -76,7 +76,7 @@ public abstract class DecoupledAuthenticationProviderBase implements DecoupledAu
 
     protected Cors cors;
 
-    public DecoupledAuthenticationProviderBase(KeycloakSession session) {
+    public HttpAuthenticationChannelProviderBase(KeycloakSession session) {
         this.session = session;
         realm = session.getContext().getRealm();
     }

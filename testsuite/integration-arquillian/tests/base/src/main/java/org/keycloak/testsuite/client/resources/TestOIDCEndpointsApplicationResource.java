@@ -32,6 +32,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 
 import java.util.List;
 import java.util.Map;
@@ -94,7 +95,7 @@ public interface TestOIDCEndpointsApplicationResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON)
     @NoCache
-    DecoupledAuthenticationRequest requestDecoupledAuthentication(final MultivaluedMap<String, String> request);
+    Response requestDecoupledAuthentication(final MultivaluedMap<String, String> request);
 
     @GET
     @Path("/get-decoupled-authentication")

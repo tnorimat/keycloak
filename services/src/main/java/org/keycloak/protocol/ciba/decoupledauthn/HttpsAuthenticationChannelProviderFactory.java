@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Red Hat, Inc. and/or its affiliates
+ * Copyright 2021 Red Hat, Inc. and/or its affiliates
  * and other contributors as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,20 +17,13 @@
 package org.keycloak.protocol.ciba.decoupledauthn;
 
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.protocol.oidc.ext.OIDCExtProvider;
-import org.keycloak.protocol.oidc.ext.OIDCExtProviderFactory;
 
-public class DecoupledAuthnResultCallbackEndpointFactory implements OIDCExtProviderFactory {
+public class HttpsAuthenticationChannelProviderFactory extends HttpAuthenticationChannelProviderFactory {
 
-    public static final String PROVIDER_ID = "ciba-decoupled-authn-callback";
+    public static final String PROVIDER_ID = "decoupled-https-authn-channel";
 
     @Override
-    public OIDCExtProvider create(KeycloakSession session) {
-        return new HttpAuthenticationChannelProvider(session, null);
-    }
-
-    @Override
-    public String getId() {
-        return PROVIDER_ID;
+    public AuthenticationChannelProvider create(KeycloakSession session) {
+        return new HttpsAuthenticationChannelProvider(session, httpAuthenticationRequestUri);
     }
 }

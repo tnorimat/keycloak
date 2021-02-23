@@ -16,8 +16,30 @@
  */
 package org.keycloak.protocol.ciba.decoupledauthn;
 
+import org.keycloak.provider.Provider;
 import org.keycloak.provider.ProviderFactory;
+import org.keycloak.provider.Spi;
 
-public interface DecoupledAuthenticationProviderFactory extends ProviderFactory<DecoupledAuthenticationProvider> {
+public class AuthenticationChannelSpi implements Spi {
+
+    @Override
+    public boolean isInternal() {
+        return true;
+    }
+
+    @Override
+    public String getName() {
+        return "decoupled-authn-channel";
+    }
+
+    @Override
+    public Class<? extends Provider> getProviderClass() {
+        return AuthenticationChannelProvider.class;
+    }
+
+    @Override
+    public Class<? extends ProviderFactory> getProviderFactoryClass() {
+        return AuthenticationChannelProviderFactory.class;
+    }
 
 }

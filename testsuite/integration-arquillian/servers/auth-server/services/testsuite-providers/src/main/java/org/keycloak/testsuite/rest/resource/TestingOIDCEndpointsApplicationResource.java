@@ -41,7 +41,7 @@ import org.keycloak.jose.jwk.JWKBuilder;
 import org.keycloak.jose.jws.JWSBuilder;
 import org.keycloak.models.Constants;
 import org.keycloak.protocol.ciba.CIBAConstants;
-import org.keycloak.protocol.ciba.decoupledauthn.DelegateDecoupledAuthenticationProvider;
+import org.keycloak.protocol.ciba.decoupledauthn.HttpAuthenticationChannelProvider;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.testsuite.ciba.DecoupledAuthenticationRequest;
@@ -57,6 +57,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -508,28 +510,28 @@ public class TestingOIDCEndpointsApplicationResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON)
     @NoCache
-    public DecoupledAuthenticationRequest requestDecoupledAuthentication(final MultivaluedMap<String, String> request) {
+    public Response requestDecoupledAuthentication(final MultivaluedMap<String, String> request) {
             DecoupledAuthenticationRequest entry = new DecoupledAuthenticationRequest();
 
             // required
-            String decoupledAuthnBindingId = request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_ID);
-            if (decoupledAuthnBindingId == null) throw new BadRequestException("missing parameter : " + DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_ID);
+            String decoupledAuthnBindingId = request.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_ID);
+            if (decoupledAuthnBindingId == null) throw new BadRequestException("missing parameter : " + HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_ID);
             entry.setDecoupledAuthId(decoupledAuthnBindingId);
 
-            String loginHint = request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_USER_INFO);
-            if (loginHint == null) throw new BadRequestException("missing parameter : " + DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_USER_INFO);
+            String loginHint = request.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_USER_INFO);
+            if (loginHint == null) throw new BadRequestException("missing parameter : " + HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_USER_INFO);
             entry.setUserInfo(loginHint);
 
-            if (request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED) == null)
-                throw new BadRequestException("missing parameter : " + DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED);
-            entry.setConsentRequired(Boolean.valueOf(request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED)).booleanValue());
+            if (request.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED) == null)
+                throw new BadRequestException("missing parameter : " + HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED);
+            entry.setConsentRequired(Boolean.valueOf(request.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_AUTHN_IS_CONSENT_REQUIRED)).booleanValue());
 
             String scope = request.getFirst(CIBAConstants.SCOPE);
             if (scope == null) throw new BadRequestException("missing parameter : " + CIBAConstants.SCOPE);
             entry.setScope(request.getFirst(CIBAConstants.SCOPE));
 
             // optional
-            entry.setDefaultClientScope(request.getFirst(DelegateDecoupledAuthenticationProvider.DECOUPLED_DEFAULT_CLIENT_SCOPE));
+            entry.setDefaultClientScope(request.getFirst(HttpAuthenticationChannelProvider.DECOUPLED_DEFAULT_CLIENT_SCOPE));
             entry.setBindingMessage(request.getFirst(CIBAConstants.BINDING_MESSAGE));
             // for testing purpose
             if (request.getFirst(CIBAConstants.BINDING_MESSAGE).equals("GODOWN")) throw new BadRequestException("intentional error : GODOWN");
@@ -538,7 +540,7 @@ public class TestingOIDCEndpointsApplicationResource {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return entry;
+        return Response.status(Status.CREATED).build();
     }
 
     @GET

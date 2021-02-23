@@ -16,30 +16,36 @@
  */
 package org.keycloak.protocol.ciba.decoupledauthn;
 
-import org.keycloak.provider.Provider;
-import org.keycloak.provider.ProviderFactory;
-import org.keycloak.provider.Spi;
+import org.keycloak.Config.Scope;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.KeycloakSessionFactory;
 
-public class DecoupledAuthenticationSpi implements Spi {
+public class HttpAuthenticationChannelProviderFactory implements AuthenticationChannelProviderFactory {
+
+    public static final String PROVIDER_ID = "decoupled-http-authn-channel";
+
+    protected String httpAuthenticationRequestUri;
 
     @Override
-    public boolean isInternal() {
-        return true;
+    public AuthenticationChannelProvider create(KeycloakSession session) {
+        return new HttpAuthenticationChannelProvider(session, httpAuthenticationRequestUri);
     }
 
     @Override
-    public String getName() {
-        return "decoupled-authn";
+    public void init(Scope config) {
+        httpAuthenticationRequestUri = config.get("httpAuthnRequestUri");
     }
 
     @Override
-    public Class<? extends Provider> getProviderClass() {
-        return DecoupledAuthenticationProvider.class;
+    public void postInit(KeycloakSessionFactory factory) {
     }
 
     @Override
-    public Class<? extends ProviderFactory> getProviderFactoryClass() {
-        return DecoupledAuthenticationProviderFactory.class;
+    public void close() {
     }
 
+    @Override
+    public String getId() {
+        return PROVIDER_ID;
+    }
 }

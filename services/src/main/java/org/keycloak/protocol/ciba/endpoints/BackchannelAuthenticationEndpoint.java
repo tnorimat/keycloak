@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import javax.ws.rs.POST;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -46,7 +47,7 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.protocol.ciba.CIBAAuthReqId;
 import org.keycloak.protocol.ciba.CIBAConstants;
 import org.keycloak.protocol.ciba.CIBAErrorCodes;
-import org.keycloak.protocol.ciba.decoupledauthn.DecoupledAuthenticationProvider;
+import org.keycloak.protocol.ciba.decoupledauthn.AuthenticationChannelProvider;
 import org.keycloak.protocol.ciba.endpoints.request.BackchannelAuthenticationRequest;
 import org.keycloak.protocol.ciba.resolvers.CIBALoginUserResolver;
 import org.keycloak.protocol.ciba.utils.CIBAAuthReqIdParser;
@@ -110,6 +111,11 @@ public class BackchannelAuthenticationEndpoint {
         UserModel user = checkUser(request);
         logger.tracef("CIBA Grant :: client_id = %s, isConsentRequired = %s", client.getClientId(), client.isConsentRequired());
 
+        AuthenticationChannelProvider provider = session.getProvider(AuthenticationChannelProvider.class);
+        if (provider == null) {
+            throw new RuntimeException("Authentication Channel Provider not found.");
+        }
+
         // create Auth Result's ID
         // Auth Result stands for authentication result by AD(Authentication Device).
         // By including it in Auth Req ID, keycloak can find Auth Result corresponding to Auth Req ID on Token Endpoint.
@@ -143,24 +149,21 @@ public class BackchannelAuthenticationEndpoint {
             logger.tracef("CIBA Grant :: Access throttling : next token request must be after %d sec.", interval);
         }
 
-        DecoupledAuthenticationProvider provider = session.getProvider(DecoupledAuthenticationProvider.class);
-        if (provider == null) {
-            throw new RuntimeException("CIBA Decoupled Authentication Provider not setup properly.");
-        }
-        provider.doBackchannelAuthentication(client, request, expiresIn, authResultId, userSessionIdWillBeCreated);
-
-        ObjectNode response = JsonSerialization.createObjectNode();
-        response.put(CIBAConstants.AUTH_REQ_ID, authReqId)
-                .put(CIBAConstants.EXPIRES_IN, expiresIn);
-        if (interval > 0) response.put(CIBAConstants.INTERVAL, interval);
         try {
+            provider.requestAuthentication(client, request, expiresIn, authResultId, userSessionIdWillBeCreated);
+
+            ObjectNode response = JsonSerialization.createObjectNode();
+            response.put(CIBAConstants.AUTH_REQ_ID, authReqId)
+                    .put(CIBAConstants.EXPIRES_IN, expiresIn);
+            if (interval > 0) response.put(CIBAConstants.INTERVAL, interval);
+
             return Response.ok(JsonSerialization.writeValueAsBytes(response))
                     .header(HttpHeaderNames.CACHE_CONTROL, "no-store")
                     .header(HttpHeaderNames.PRAGMA, "no-cache")
                     .type(MediaType.APPLICATION_JSON_TYPE)
                     .build();
-        } catch (IOException e) {
-            throw new RuntimeException("Error creating Backchannel Authentication response.", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
 
     }
