@@ -168,7 +168,7 @@ public class HttpAuthenticationChannelProvider extends HttpAuthenticationChannel
             throw new RuntimeException("CIBA Login User Resolver not setup properly.");
         }
         String authRequestedUserHint = realm.getCIBAPolicy().getAuthRequestedUserHint();
-        UserModel user = null;
+        UserModel user;
         if (authRequestedUserHint.equals(CIBAConstants.LOGIN_HINT)) {
             user = resolver.getUserFromLoginHint(request.getLoginHint());
         } else if (authRequestedUserHint.equals(CIBAConstants.ID_TOKEN_HINT)) {
@@ -200,14 +200,16 @@ public class HttpAuthenticationChannelProvider extends HttpAuthenticationChannel
         String decoupledAuthId = CIBAAuthReqIdParser.persistAuthReqId(session, decoupledAuthIdJwt);
 
         try {
-            int status = SimpleHttp.doPost(httpAuthenticationRequestUri, session)
+            SimpleHttp simpleHttp = SimpleHttp.doPost(httpAuthenticationRequestUri, session)
                 .param(DECOUPLED_AUTHN_ID, decoupledAuthId)
                 .param(DECOUPLED_AUTHN_USER_INFO, infoUsedByAuthentication)
                 .param(DECOUPLED_AUTHN_IS_CONSENT_REQUIRED, Boolean.toString(client.isConsentRequired()))
                 .param(CIBAConstants.SCOPE, request.getScope())
                 .param(DECOUPLED_DEFAULT_CLIENT_SCOPE, defaultClientScope)
-                .param(CIBAConstants.BINDING_MESSAGE, request.getBindingMessage())
-                .asStatus();
+                .param(CIBAConstants.BINDING_MESSAGE, request.getBindingMessage());
+
+            int status = completeDecoupledAuthnRequest(simpleHttp, user, client, request, expiresIn, authResultId).asStatus();
+
             if (status != Status.CREATED.getStatusCode()) {
                 // To terminate CIBA flow, set Auth Result as unknown
                 DecoupledAuthnResult decoupledAuthnResult = new DecoupledAuthnResult(Time.currentTime() + expiresIn, DecoupledAuthStatus.UNKNOWN);
@@ -216,6 +218,13 @@ public class HttpAuthenticationChannelProvider extends HttpAuthenticationChannel
         } catch (IOException ioe) {
             throw new RuntimeException("Decoupled Authn Request URI Access failed.", ioe);
         }
+    }
+
+    /**
+     * Extension point to allow subclass to override this method in order to add datas to post to decoupled server.
+     */
+    protected SimpleHttp completeDecoupledAuthnRequest(SimpleHttp simpleHttp, UserModel user, ClientModel client, BackchannelAuthenticationRequest request, int expiresIn, String authResultId) {
+        return simpleHttp;
     }
 
     protected void checkAuthenticationChannel() {
