@@ -34,7 +34,7 @@ public class CibaUtils {
         } else {
             OnlineManagementClient client = AuthServerTestEnricher.getManagementClient();
             // configure the selected provider and set it as the default vault provider.
-            client.execute("/subsystem=keycloak-server/spi=decoupled-authn/:add(default-provider=" + provider.getName() + ")");
+            client.execute("/subsystem=keycloak-server/spi=decoupled-authn-channel/:add(default-provider=" + provider.getName() + ")");
             for (String command : provider.getCliInstallationCommands()) {
                 ModelNodeResult r = client.execute(command);
             }
@@ -50,7 +50,7 @@ public class CibaUtils {
             for (String command : provider.getCliRemovalCommands()) {
                 client.execute(command);
             }
-            client.execute("/subsystem=keycloak-server/spi=decoupled-authn/:remove");
+            client.execute("/subsystem=keycloak-server/spi=decoupled-authn-channel/:remove");
             client.close();
         }
     }

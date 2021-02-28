@@ -29,10 +29,10 @@ public @interface EnableCiba {
 
     enum PROVIDER_ID {
 
-        DELEGATE_DECOUPLED_AUTHN("delegate-decoupled-authn",
+        DELEGATE_DECOUPLED_AUTHN("decoupled-http-authn-channel",
                 new String[] {
-                        "/subsystem=keycloak-server/spi=decoupled-authn/provider=delegate-decoupled-authn/:add(enabled=true, " +
-                            "properties={decoupledAuthnRequestUri => \"https://localhost:8543/auth/realms/master/app/oidc-client-endpoints/request-decoupled-authentication\"})"},
+                        "/subsystem=keycloak-server/spi=decoupled-authn-channel/provider=decoupled-http-authn-channel/:add(enabled=true, " +
+                            "properties={httpAuthnRequestUri => \"https://localhost:8543/auth/realms/master/app/oidc-client-endpoints/request-decoupled-authentication\"})"},
                     new String[] {});
 
         final String name;
