@@ -145,6 +145,12 @@ public class OIDCConfigurationRepresentation {
     @JsonProperty("device_authorization_endpoint")
     private String deviceAuthorizationEndpoint;
 
+    @JsonProperty("grant_management_actions_supported")
+    private List<String> grantManagementActionsSupported;
+
+    @JsonProperty("grant_management_endpoint")
+    private String grantManagementEndpoint;
+
     protected Map<String, Object> otherClaims = new HashMap<String, Object>();
 
     public String getIssuer() {
@@ -455,5 +461,21 @@ public class OIDCConfigurationRepresentation {
 
     public String getDeviceAuthorizationEndpoint() {
         return deviceAuthorizationEndpoint;
+    }
+
+    public List<String> getGrantManagementActionsSupported() {
+        return grantManagementActionsSupported;
+    }
+
+    public void setGrantManagementActionsSupported(List<String> grantManagementActionsSupported) {
+        this.grantManagementActionsSupported = grantManagementActionsSupported;
+    }
+
+    public String getGrantManagementEndpoint() {
+        return grantManagementEndpoint;
+    }
+
+    public void setGrantManagementEndpoint(String grantManagementEndpoint) {
+        this.grantManagementEndpoint = grantManagementEndpoint;
     }
 }

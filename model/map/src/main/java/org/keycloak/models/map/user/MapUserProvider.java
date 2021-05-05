@@ -245,6 +245,11 @@ public class MapUserProvider implements UserProvider.Streams, UserCredentialStor
     }
 
     @Override
+    public UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
+        return null;
+    }
+
+    @Override
     public Stream<UserConsentModel> getConsentsStream(RealmModel realm, String userId) {
         LOG.tracef("getConsentByClientStream(%s, %s)%s", realm, userId, getShortStackTrace());
         return getEntityById(realm, userId)
@@ -278,6 +283,11 @@ public class MapUserProvider implements UserProvider.Streams, UserCredentialStor
         return getRegisteredEntityById(realm, userId)
                 .map(userEntity -> userEntity.removeUserConsent(clientInternalId))
                 .orElse(false);
+    }
+
+    @Override
+    public boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
+        return false;
     }
 
     @Override

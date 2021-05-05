@@ -520,6 +520,11 @@ public class UserStorageManager extends AbstractStorageManager<UserStorageProvid
     }
 
     @Override
+    public UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
+        return null;
+    }
+
+    @Override
     public Stream<UserConsentModel> getConsentsStream(RealmModel realm, String userId) {
         if (StorageId.isLocalStorage(userId)) {
             return localStorage().getConsentsStream(realm, userId);
@@ -545,6 +550,11 @@ public class UserStorageManager extends AbstractStorageManager<UserStorageProvid
         } else {
             return getFederatedStorage().revokeConsentForClient(realm, userId, clientInternalId);
         }
+    }
+
+    @Override
+    public boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
+        return false;
     }
 
     @Override

@@ -39,7 +39,7 @@ import java.util.LinkedList;
  */
 @Entity
 @Table(name="USER_CONSENT", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"USER_ID", "CLIENT_ID"})
+        @UniqueConstraint(columnNames = {"USER_ID", "CLIENT_ID", "GRANT_ID"})
 })
 @NamedQueries({
         @NamedQuery(name="userConsentByUserAndClient", query="select consent from UserConsentEntity consent where consent.user.id = :userId and consent.clientId = :clientId"),
@@ -51,6 +51,11 @@ import java.util.LinkedList;
         @NamedQuery(name="deleteUserConsentsByClient", query="delete from UserConsentEntity consent where consent.clientId = :clientId"),
         @NamedQuery(name="deleteUserConsentsByExternalClient", query="delete from UserConsentEntity consent where consent.clientStorageProvider = :clientStorageProvider and consent.externalClientId = :externalClientId"),
         @NamedQuery(name="deleteUserConsentsByClientStorageProvider", query="delete from UserConsentEntity consent where consent.clientStorageProvider = :clientStorageProvider"),
+
+        @NamedQuery(name="userConsentByUserAndClientAndGrantId", query="select consent from UserConsentEntity consent where consent.user.id = :userId and consent.clientId = :clientId and consent.grantId = :grantId"),
+        @NamedQuery(name="userConsentByUserAndExternalClientAndGrantId", query="select consent from UserConsentEntity consent where consent.user.id = :userId and consent.clientStorageProvider = :clientStorageProvider and consent.externalClientId = :externalClientId and consent.grantId = :grantId"),
+        @NamedQuery(name="deleteUserConsentByUserAndClientAndGrantId", query="delete from UserConsentEntity consent where consent.user.id = :userId and consent.clientId = :clientId and consent.grantId = :grantId"),
+        @NamedQuery(name="deleteUserConsentByUserAndExternalClientAndGrantId", query="delete from UserConsentEntity consent where consent.user.id = :userId and consent.clientStorageProvider = :clientStorageProvider and consent.externalClientId = :externalClientId and consent.grantId = :grantId"),
 })
 public class UserConsentEntity {
 
@@ -71,6 +76,15 @@ public class UserConsentEntity {
 
     @Column(name="EXTERNAL_CLIENT_ID")
     protected String externalClientId;
+
+    @Column(name="CLAIMS")
+    private String claims;
+
+    @Column(name="AUTHORIZATION_DETAILS")
+    private String authorizationDetails;
+
+    @Column(name="GRANT_ID")
+    private String grantId;
 
     @OneToMany(cascade ={CascadeType.REMOVE}, orphanRemoval = true, mappedBy = "userConsent")
     Collection<UserConsentClientScopeEntity> grantedClientScopes;
@@ -146,6 +160,30 @@ public class UserConsentEntity {
 
     public void setExternalClientId(String externalClientId) {
         this.externalClientId = externalClientId;
+    }
+
+    public String getClaims() {
+        return claims;
+    }
+
+    public void setClaims(String claims) {
+        this.claims = claims;
+    }
+
+    public String getAuthorizationDetails() {
+        return authorizationDetails;
+    }
+
+    public void setAuthorizationDetails(String authorizationDetails) {
+        this.authorizationDetails = authorizationDetails;
+    }
+
+    public String getGrantId() {
+        return grantId;
+    }
+
+    public void setGrantId(String grantId) {
+        this.grantId = grantId;
     }
 
     @Override

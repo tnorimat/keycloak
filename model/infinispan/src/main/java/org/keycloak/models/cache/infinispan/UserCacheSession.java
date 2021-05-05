@@ -659,6 +659,11 @@ public class UserCacheSession implements UserCache.Streams {
         return getDelegate().revokeConsentForClient(realm, userId, clientInternalId);
     }
 
+    @Override
+    public boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
+        return false;
+    }
+
     static String getConsentCacheKey(String userId) {
         return userId + ".consents";
     }
@@ -695,6 +700,11 @@ public class UserCacheSession implements UserCache.Streams {
         CachedUserConsent cachedConsent = cached.getConsents().get(clientId);
         if (cachedConsent == null) return null;
         return toConsentModel(realm, cachedConsent);
+    }
+
+    @Override
+    public UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
+        return null;
     }
 
     @Override

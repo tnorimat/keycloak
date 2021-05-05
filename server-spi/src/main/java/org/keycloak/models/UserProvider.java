@@ -167,6 +167,19 @@ public interface UserProvider extends Provider,
     UserConsentModel getConsentByClient(RealmModel realm, String userId, String clientInternalId);
 
     /**
+     * Returns UserConsentModel given by a user with the userId for the client with clientInternalId
+     *
+     * @param realm a reference to the realm
+     * @param userId id of the user
+     * @param clientInternalId id of the client
+     * @param grandId external consent id
+     * @return consent given by the user to the client or {@code null} if no consent or user exists
+     *
+     * @throws ModelException when there are more consents fulfilling specified parameters
+     */
+    UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId);
+
+    /**
      * @deprecated Use {@link #getConsentsStream(RealmModel, String) getConsentsStream} instead.
      */
     @Deprecated
@@ -204,6 +217,17 @@ public interface UserProvider extends Provider,
      * @return {@code true} if the consent was removed, {@code false} otherwise
      */
     boolean revokeConsentForClient(RealmModel realm, String userId, String clientInternalId);
+
+    /**
+     * Remove a user consent given by the user id and client id
+     *
+     * @param realm a reference to the realm
+     * @param userId id of the user
+     * @param clientInternalId id of the client
+     * @param grandId external consent id
+     * @return {@code true} if the consent was removed, {@code false} otherwise
+     */
+    boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId);
 
     /* FEDERATED IDENTITIES methods */
 

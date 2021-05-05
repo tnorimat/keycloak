@@ -45,6 +45,7 @@ import org.keycloak.protocol.oidc.endpoints.TokenEndpoint;
 import org.keycloak.protocol.oidc.endpoints.TokenRevocationEndpoint;
 import org.keycloak.protocol.oidc.endpoints.UserInfoEndpoint;
 import org.keycloak.protocol.oidc.ext.OIDCExtProvider;
+import org.keycloak.protocol.oidc.grants.management.endpoints.GrantEndpoint;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.messages.Messages;
@@ -253,6 +254,13 @@ public class OIDCLoginProtocolService {
     @Path("userinfo")
     public Object issueUserInfo() {
         UserInfoEndpoint endpoint = new UserInfoEndpoint(tokenManager, realm);
+        ResteasyProviderFactory.getInstance().injectProperties(endpoint);
+        return endpoint;
+    }
+
+    @Path("grants")
+    public Object grants() {
+        GrantEndpoint endpoint = new GrantEndpoint(realm, event, tokenManager);
         ResteasyProviderFactory.getInstance().injectProperties(endpoint);
         return endpoint;
     }

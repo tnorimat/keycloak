@@ -125,6 +125,8 @@ public interface OAuth2Constants {
     String DEVICE_CODE = "device_code";
 
     String DISPLAY_CONSOLE = "console";
+
+    String GRANT_MANAGEMENT_ACTION_PARAM = "grant_management_action";
 }
 
 

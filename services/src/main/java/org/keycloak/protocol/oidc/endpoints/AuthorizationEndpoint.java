@@ -76,6 +76,10 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
 
     public static final String CODE_AUTH_TYPE = "code";
 
+    private static final String GRANT_MANAGEMENT_ACTION_CREATE = "create";
+    private static final String GRANT_MANAGEMENT_ACTION_UPDATE = "update";
+
+
     /**
      * Prefix used to store additional HTTP GET params from original client request into {@link AuthenticationSessionModel} note to be available later in Authenticators, RequiredActions etc. Prefix is used to
      * prevent collisions with internally used notes.
@@ -138,8 +142,13 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
 
         request = AuthorizationEndpointRequestParserProcessor.parseRequest(event, session, client, params);
 
+
         checkRedirectUri();
         Response errorResponse = checkResponseType();
+        if (errorResponse != null) {
+            return errorResponse;
+        }
+        errorResponse = checkGrant();
         if (errorResponse != null) {
             return errorResponse;
         }
@@ -250,6 +259,31 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         }
 
         session.getContext().setClient(client);
+    }
+
+    private Response checkGrant () {
+        String grantId = request.getGrantId();
+        String grantManagementAction = request.getGrantManagementAction();
+//TODO: check if grantManagementAction not null and consent client false or no prompt consent
+        if (grantId != null && grantManagementAction == null ) {
+            ServicesLogger.LOGGER.missingParameter(OAuth2Constants.GRANT_MANAGEMENT_ACTION_PARAM);
+            event.error(Errors.INVALID_REQUEST);
+            return redirectErrorToClient(OIDCResponseMode.QUERY, OAuthErrorException.INVALID_REQUEST, "Missing parameter: grant_management_action");
+        }
+
+        if (grantId != null && GRANT_MANAGEMENT_ACTION_CREATE.equals(grantManagementAction) ) {
+            ServicesLogger.LOGGER.missingParameter(OAuth2Constants.GRANT_MANAGEMENT_ACTION_PARAM);
+            event.error(Errors.INVALID_REQUEST);
+            return redirectErrorToClient(OIDCResponseMode.QUERY, OAuthErrorException.INVALID_REQUEST, "grant_management_action 'create' not allowed with grand_id not null");
+        }
+
+        if (grantId == null && GRANT_MANAGEMENT_ACTION_UPDATE.equals(grantManagementAction) ) {
+            ServicesLogger.LOGGER.missingParameter(OAuth2Constants.GRANT_MANAGEMENT_ACTION_PARAM);
+            event.error(Errors.INVALID_GRANT_ID);
+            return redirectErrorToClient(OIDCResponseMode.QUERY, OAuthErrorException.INVALID_GRANT, "grant_management_action 'update' not allowed with grand_id null");
+        }
+//Todo: force prompt consent
+        return null;
     }
 
     private Response checkResponseType() {
@@ -474,6 +508,8 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         if (request.getAcr() != null) authenticationSession.setClientNote(OIDCLoginProtocol.ACR_PARAM, request.getAcr());
         if (request.getDisplay() != null) authenticationSession.setAuthNote(OAuth2Constants.DISPLAY, request.getDisplay());
         if (request.getUiLocales() != null) authenticationSession.setAuthNote(LocaleSelectorProvider.CLIENT_REQUEST_LOCALE, request.getUiLocales());
+        if(request.getGrantManagementAction() != null) authenticationSession.setAuthNote(OIDCLoginProtocol.GRANT_MANAGEMENT_ACTION_PARAM, request.getGrantManagementAction());
+        if(request.getGrantId() != null) authenticationSession.setAuthNote(OIDCLoginProtocol.GRANT_ID_PARAM, request.getGrantId());
 
         // https://tools.ietf.org/html/rfc7636#section-4
         if (request.getCodeChallenge() != null) authenticationSession.setClientNote(OIDCLoginProtocol.CODE_CHALLENGE_PARAM, request.getCodeChallenge());

@@ -63,7 +63,15 @@ public interface LoginProtocol extends Provider {
          * Passive authentication mode requested, user is logged in, but some other user interaction is necessary (eg. some required login actions exist or Consent approval is necessary for logged in
          * user)
          */
-        PASSIVE_INTERACTION_REQUIRED;
+        PASSIVE_INTERACTION_REQUIRED,
+        /**
+         * grant_id is unknown
+         */
+        INVALID_GRANT_ID,
+        /**
+         * grant management action is unknown
+         */
+        INVALID_GRANT_MANAGEMENT_ACTION;
     }
 
     LoginProtocol setSession(KeycloakSession session);

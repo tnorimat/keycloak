@@ -27,6 +27,9 @@ public class UserConsentModel {
 
     private final ClientModel client;
     private Set<ClientScopeModel> clientScopes = new HashSet<>();
+    private String claims;
+    private String authorizationDetails;
+    private String grantId;
     private Long createdDate;
     private Long lastUpdatedDate;
 
@@ -52,6 +55,30 @@ public class UserConsentModel {
             if (apprClientScope.getId().equals(clientScope.getId())) return true;
         }
         return false;
+    }
+
+    public String getClaims() {
+        return claims;
+    }
+
+    public void setClaims(String claims) {
+        this.claims = claims;
+    }
+
+    public String getAuthorizationDetails() {
+        return authorizationDetails;
+    }
+
+    public void setAuthorizationDetails(String authorizationDetails) {
+        this.authorizationDetails = authorizationDetails;
+    }
+
+    public String getGrantId() {
+        return grantId;
+    }
+
+    public void setGrantId(String grantId) {
+        this.grantId = grantId;
     }
 
     public Long getCreatedDate() {

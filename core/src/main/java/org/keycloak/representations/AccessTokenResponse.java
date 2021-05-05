@@ -61,6 +61,18 @@ public class AccessTokenResponse {
     @JsonProperty("scope")
     protected String scope;
 
+    // Grant Management for OAuth 2.0  : grant_id MUST be returned in the response from Token Endpoint
+    @JsonProperty("grant_id")
+    protected String grantId;
+
+    public String getGrantId() {
+        return grantId;
+    }
+
+    public void setGrantId(String grantId) {
+        this.grantId = grantId;
+    }
+
     public String getScope() {
         return scope;
     }
