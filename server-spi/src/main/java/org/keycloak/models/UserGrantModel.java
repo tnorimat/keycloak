@@ -17,16 +17,12 @@
 
 package org.keycloak.models;
 
-import java.util.HashSet;
-import java.util.Set;
+public class UserGrantModel {
 
-/**
- * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
- */
-public class UserConsentModel {
-
-    private final ClientModel client;
-    private Set<ClientScopeModel> clientScopes = new HashSet<>();
+    private String scopes;
+    private String claims;
+    private String authorizationDetails;
+    private String grantId;
     private Long createdDate;
     private Long lastUpdatedDate;
     private String userConsentId;
@@ -39,28 +35,36 @@ public class UserConsentModel {
         this.userConsentId = userConsentId;
     }
 
-    public UserConsentModel(ClientModel client) {
-        this.client = client;
+    public String getScopes() {
+        return scopes;
     }
 
-    public ClientModel getClient() {
-        return client;
+    public void setScopes(String scopes) {
+        this.scopes = scopes;
     }
 
-    public void addGrantedClientScope(ClientScopeModel clientScope) {
-        clientScopes.add(clientScope);
+    public String getClaims() {
+        return claims;
     }
 
-    public Set<ClientScopeModel> getGrantedClientScopes() {
-        return clientScopes;
+    public void setClaims(String claims) {
+        this.claims = claims;
     }
 
-    public boolean isClientScopeGranted(ClientScopeModel clientScope) {
-        // TODO: May need to be changed with adding support for client scopes inheritance
-        for (ClientScopeModel apprClientScope : clientScopes) {
-            if (apprClientScope.getId().equals(clientScope.getId())) return true;
-        }
-        return false;
+    public String getAuthorizationDetails() {
+        return authorizationDetails;
+    }
+
+    public void setAuthorizationDetails(String authorizationDetails) {
+        this.authorizationDetails = authorizationDetails;
+    }
+
+    public String getGrantId() {
+        return grantId;
+    }
+
+    public void setGrantId(String grantId) {
+        this.grantId = grantId;
     }
 
     public Long getCreatedDate() {
@@ -77,5 +81,17 @@ public class UserConsentModel {
 
     public void setLastUpdatedDate(Long lastUpdatedDate) {
         this.lastUpdatedDate = lastUpdatedDate;
+    }
+
+    public UserGrantModel(String scopes, String claims, String authorizationDetails, String grantId, Long createdDate, Long lastUpdatedDate) {
+        this.scopes = scopes;
+        this.claims = claims;
+        this.authorizationDetails = authorizationDetails;
+        this.grantId = grantId;
+        this.createdDate = createdDate;
+        this.lastUpdatedDate = lastUpdatedDate;
+    }
+
+    public UserGrantModel() {
     }
 }

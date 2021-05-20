@@ -64,7 +64,8 @@ import java.util.Collections;
  */
 public class GrantEndpoint implements RealmResourceProvider {
 
-    public static final String GRANT_MANAGEMENT_TYPE = "grant_management_query";
+    public static final String GRANT_MANAGEMENT_QUERY = "grant_management_query";
+    public static final String GRANT_MANAGEMENT_REVOKE = "grant_management_revoke";
 
     protected static final Logger logger = Logger.getLogger(GrantEndpoint.class);
 
@@ -113,13 +114,21 @@ public class GrantEndpoint implements RealmResourceProvider {
         logger.trace("query request");
 
         String accessToken = this.appAuthManager.extractAuthorizationHeaderTokenOrReturnNull(headers);
-        checkToken(accessToken);
+        checkToken(accessToken, GRANT_MANAGEMENT_QUERY);
 
-        UserProvider userProvider = session.getProvider(UserProvider.class);
-        UserConsentModel consent = userProvider.getConsentByGrantId(realm, userModel.getId(), clientModel.getClientId(), grandId);
+        GrantService grantService = session.getProvider(GrantService.class);
+
+
+        UserGrantModel grant = null;
+        try {
+            grant = grantService.getGrantByGrantId(realm, grandId, userModel.getId());
+        } catch (ModelException e) {
+            throw new CorsErrorResponseException(cors.allowAllOrigins(), OAuthErrorException.INVALID_REQUEST, e.getMessage(), Response.Status.BAD_REQUEST);
+        }
+
 
         return Response.status(Response.Status.OK)
-                .entity(consent)
+                .entity(grant)
                 .type(MediaType.APPLICATION_JSON_TYPE)
                 .build();
     }
@@ -137,11 +146,14 @@ public class GrantEndpoint implements RealmResourceProvider {
         event.event(EventType.REVOKE_GRANT);
 
         String accessToken = this.appAuthManager.extractAuthorizationHeaderTokenOrReturnNull(headers);
-        checkToken(accessToken);
+        checkToken(accessToken, GRANT_MANAGEMENT_REVOKE);
 
-        UserProvider userProvider = session.getProvider(UserProvider.class);
-        userProvider.revokeConsentByGrantId(realm, userModel.getId(), clientModel.getClientId(), grandId);
+        GrantService grantService = session.getProvider(GrantService.class);
+        boolean delete = grantService.revokeGrantByGrantId(realm, grandId, userModel.getId());
 
+        if (!delete) {
+            throw new CorsErrorResponseException(cors.allowAllOrigins(), OAuthErrorException.INVALID_REQUEST, "Grant not found", Response.Status.BAD_REQUEST);
+        }
         return Response.noContent().build();
     }
 
@@ -154,7 +166,7 @@ public class GrantEndpoint implements RealmResourceProvider {
     public void close() {
     }
 
-    private void checkToken(String tokenString) {
+    private void checkToken(String tokenString, String grantManagementAction) {
         cors = Cors.add(request).auth().allowedMethods(request.getHttpMethod()).auth().exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
 
         EventBuilder event = new EventBuilder(realm, session, clientConnection)
@@ -177,7 +189,7 @@ public class GrantEndpoint implements RealmResourceProvider {
             token = verifier.verify().getToken();
 
             String scope = token.getScope();
-            if (!StringUtils.contains(scope, GRANT_MANAGEMENT_TYPE)) {
+            if (!StringUtils.contains(scope, grantManagementAction)) {
                 event.error(Errors.INVALID_TOKEN);
                 throw newUnauthorizedErrorResponseException(OAuthErrorException.INVALID_TOKEN, "Token verification failed");
             }

@@ -17,18 +17,30 @@
   -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
-    <changeSet author="keycloak" id="add-grand-id">
-        <addColumn tableName="USER_CONSENT">
-            <column name="CLAIMS" type="VARCHAR(36)"/>
-        </addColumn>
-        <addColumn tableName="USER_CONSENT">
-            <column name="AUTHORIZATION_DETAILS" type="VARCHAR(2048)"/>
-        </addColumn>
-        <addColumn tableName="USER_CONSENT">
-            <column name="GRANT_ID" type="VARCHAR(36)">
+    <changeSet author="keycloak" id="add-grant-ext">
+
+        <createTable tableName="USER_GRANT">
+            <column name="USER_CONSENT_ID" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-        </addColumn>
-        <addUniqueConstraint columnNames="GRANT_ID" constraintName="GRANT_ID_UC" tableName="USER_CONSENT"/>
+            <column name="GRANT_ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="USER_ID" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="SCOPES" type="VARCHAR(255)"/>
+            <column name="CLAIMS" type="VARCHAR(255)"/>
+            <column name="AUTHORIZATION_DETAILS" type="VARCHAR(255)"/>
+            <column name="CREATED_DATE" type="LONG"/>
+            <column name="LAST_UPDATED_DATE" type="LONG"/>
+        </createTable>
+
+        <addPrimaryKey columnNames="USER_CONSENT_ID, GRANT_ID, USER_ID" constraintName="PK_UCI_GI" tableName="USER_GRANT"/>
+        <addForeignKeyConstraint baseColumnNames="USER_CONSENT_ID" baseTableName="USER_GRANT" constraintName="FK_UCI" referencedColumnNames="ID" referencedTableName="USER_CONSENT"/>
+
+        <createIndex indexName="IDX_USCONSENT_CONSEXT" tableName="USER_GRANT">
+            <column name="USER_CONSENT_ID" type="VARCHAR(36)"/>
+        </createIndex>
     </changeSet>
 </databaseChangeLog>

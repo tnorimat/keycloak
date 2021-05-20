@@ -25,22 +25,8 @@ import org.keycloak.common.util.Time;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.UserCredentialStore;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientScopeModel;
-import org.keycloak.models.FederatedIdentityModel;
-import org.keycloak.models.GroupModel;
-import org.keycloak.models.IdentityProviderModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ModelDuplicateException;
-import org.keycloak.models.ModelException;
-import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.RequiredActionProviderModel;
-import org.keycloak.models.RoleModel;
-import org.keycloak.models.UserConsentModel;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.keycloak.models.UserModel.SearchableFields;
-import org.keycloak.models.UserProvider;
 import org.keycloak.models.map.common.Serialization;
 import org.keycloak.models.map.storage.MapKeycloakTransaction;
 import org.keycloak.models.map.storage.MapStorage;
@@ -245,11 +231,6 @@ public class MapUserProvider implements UserProvider.Streams, UserCredentialStor
     }
 
     @Override
-    public UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
-        return null;
-    }
-
-    @Override
     public Stream<UserConsentModel> getConsentsStream(RealmModel realm, String userId) {
         LOG.tracef("getConsentByClientStream(%s, %s)%s", realm, userId, getShortStackTrace());
         return getEntityById(realm, userId)
@@ -283,11 +264,6 @@ public class MapUserProvider implements UserProvider.Streams, UserCredentialStor
         return getRegisteredEntityById(realm, userId)
                 .map(userEntity -> userEntity.removeUserConsent(clientInternalId))
                 .orElse(false);
-    }
-
-    @Override
-    public boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
-        return false;
     }
 
     @Override

@@ -145,8 +145,8 @@ public class OIDCConfigurationRepresentation {
     @JsonProperty("device_authorization_endpoint")
     private String deviceAuthorizationEndpoint;
 
-    @JsonProperty("grant_management_actions_supported")
-    private List<String> grantManagementActionsSupported;
+    @JsonProperty("grant_id_supported")
+    private Boolean grantIdSupported;
 
     @JsonProperty("grant_management_endpoint")
     private String grantManagementEndpoint;
@@ -463,12 +463,12 @@ public class OIDCConfigurationRepresentation {
         return deviceAuthorizationEndpoint;
     }
 
-    public List<String> getGrantManagementActionsSupported() {
-        return grantManagementActionsSupported;
+    public Boolean getGrantIdSupported() {
+        return grantIdSupported;
     }
 
-    public void setGrantManagementActionsSupported(List<String> grantManagementActionsSupported) {
-        this.grantManagementActionsSupported = grantManagementActionsSupported;
+    public void setGrantIdSupported(Boolean grantIdSupported) {
+        this.grantIdSupported = grantIdSupported;
     }
 
     public String getGrantManagementEndpoint() {

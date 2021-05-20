@@ -17,7 +17,6 @@
 
 package org.keycloak.models.jpa;
 
-import org.apache.commons.lang.StringUtils;
 import org.keycloak.authorization.jpa.entities.ResourceEntity;
 import org.keycloak.common.util.Time;
 import org.keycloak.component.ComponentModel;
@@ -202,9 +201,14 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
     public void addConsent(RealmModel realm, String userId, UserConsentModel consent) {
         String clientId = consent.getClient().getId();
 
+        UserConsentEntity consentEntity = getGrantedConsentEntity(userId, clientId, LockModeType.NONE);
+        if (consentEntity != null) {
+            throw new ModelDuplicateException("Consent already exists for client [" + clientId + "] and user [" + userId + "]");
+        }
+
         long currentTime = Time.currentTimeMillis();
 
-        UserConsentEntity consentEntity = new UserConsentEntity();
+        consentEntity = new UserConsentEntity();
         consentEntity.setId(KeycloakModelUtils.generateId());
         consentEntity.setUser(em.getReference(UserEntity.class, userId));
         StorageId clientStorageId = new StorageId(clientId);
@@ -214,14 +218,6 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
             consentEntity.setClientStorageProvider(clientStorageId.getProviderId());
             consentEntity.setExternalClientId(clientStorageId.getExternalId());
         }
-
-        if(StringUtils.isEmpty(consent.getGrantId())) {
-            consentEntity.setGrantId(KeycloakModelUtils.generateId());
-        } else {
-            consentEntity.setGrantId(consent.getGrantId());
-        }
-        consentEntity.setClaims(consent.getClaims());
-        consentEntity.setAuthorizationDetails(consent.getAuthorizationDetails());
 
         consentEntity.setCreatedDate(currentTime);
         consentEntity.setLastUpdatedDate(currentTime);
@@ -238,12 +234,6 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
     }
 
     @Override
-    public UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientId, String grandId) {
-        UserConsentEntity entity = getGrantedConsentEntityByGrantId(userId, clientId, grandId, LockModeType.NONE);
-        return toConsentModel(realm, entity);
-    }
-
-    @Override
     public Stream<UserConsentModel> getConsentsStream(RealmModel realm, String userId) {
         TypedQuery<UserConsentEntity> query = em.createNamedQuery("userConsentsByUser", UserConsentEntity.class);
         query.setParameter("userId", userId);
@@ -254,15 +244,10 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
     public void updateConsent(RealmModel realm, String userId, UserConsentModel consent) {
         String clientId = consent.getClient().getId();
 
-        UserConsentEntity consentEntity = getGrantedConsentEntityByGrantId(userId, clientId, consent.getGrantId(), LockModeType.PESSIMISTIC_WRITE);
+        UserConsentEntity consentEntity = getGrantedConsentEntity(userId, clientId, LockModeType.PESSIMISTIC_WRITE);
         if (consentEntity == null) {
             throw new ModelException("Consent not found for client [" + clientId + "] and user [" + userId + "]");
         }
-
-        consentEntity.setClaims(consent.getClaims());
-        consentEntity.setAuthorizationDetails(consent.getAuthorizationDetails());
-        em.persist(consentEntity);
-        em.flush();
 
         updateGrantedConsentEntity(consentEntity, consent);
     }
@@ -276,46 +261,12 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
         return true;
     }
 
-    @Override
-    public boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientId, String grandId) {
-        UserConsentEntity consentEntity = getGrantedConsentEntityByGrantId(userId, clientId, grandId, LockModeType.PESSIMISTIC_WRITE);
-        if (consentEntity == null) return false;
-
-        em.remove(consentEntity);
-        em.flush();
-        return true;
-    }
-
 
     private UserConsentEntity getGrantedConsentEntity(String userId, String clientId, LockModeType lockMode) {
         StorageId clientStorageId = new StorageId(clientId);
         String queryName = clientStorageId.isLocal() ?  "userConsentByUserAndClient" : "userConsentByUserAndExternalClient";
         TypedQuery<UserConsentEntity> query = em.createNamedQuery(queryName, UserConsentEntity.class);
         query.setParameter("userId", userId);
-        if (clientStorageId.isLocal()) {
-            query.setParameter("clientId", clientId);
-        } else {
-            query.setParameter("clientStorageProvider", clientStorageId.getProviderId());
-            query.setParameter("externalClientId", clientStorageId.getExternalId());
-        }
-        query.setLockMode(lockMode);
-        List<UserConsentEntity> results = query.getResultList();
-        if (results.size() > 1) {
-            throw new ModelException("More results found for user [" + userId + "] and client [" + clientId + "]");
-        } else if (results.size() == 1) {
-            return results.get(0);
-        } else {
-            return null;
-        }
-
-    }
-
-    private UserConsentEntity getGrantedConsentEntityByGrantId(String userId, String clientId, String grantId, LockModeType lockMode) {
-        StorageId clientStorageId = new StorageId(clientId);
-        String queryName = clientStorageId.isLocal() ?  "userConsentByUserAndClientAndGrantId" : "userConsentByUserAndExternalClientAndGrantId";
-        TypedQuery<UserConsentEntity> query = em.createNamedQuery(queryName, UserConsentEntity.class);
-        query.setParameter("userId", userId);
-        query.setParameter("grantId", grantId);
         if (clientStorageId.isLocal()) {
             query.setParameter("clientId", clientId);
         } else {
@@ -353,6 +304,7 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
         UserConsentModel model = new UserConsentModel(client);
         model.setCreatedDate(entity.getCreatedDate());
         model.setLastUpdatedDate(entity.getLastUpdatedDate());
+        model.setUserConsentId(entity.getId());
 
         Collection<UserConsentClientScopeEntity> grantedClientScopeEntities = entity.getGrantedClientScopes();
         if (grantedClientScopeEntities != null) {

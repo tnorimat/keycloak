@@ -16,11 +16,18 @@
  */
 package org.keycloak.services.resources;
 
+import org.apache.commons.lang.StringUtils;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.TokenVerifier;
-import org.keycloak.authentication.*;
+import org.keycloak.authentication.AuthenticationFlowException;
+import org.keycloak.authentication.AuthenticationProcessor;
+import org.keycloak.authentication.ExplainedVerificationException;
+import org.keycloak.authentication.RequiredActionContext;
+import org.keycloak.authentication.RequiredActionContextResult;
+import org.keycloak.authentication.RequiredActionFactory;
+import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.authentication.actiontoken.ActionTokenContext;
 import org.keycloak.authentication.actiontoken.ActionTokenHandler;
 import org.keycloak.authentication.actiontoken.DefaultActionTokenKey;
@@ -33,6 +40,7 @@ import org.keycloak.authentication.authenticators.browser.AbstractUsernameFormAu
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.VerificationException;
+import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.Time;
 import org.keycloak.crypto.SignatureProvider;
 import org.keycloak.crypto.SignatureVerifierContext;
@@ -52,6 +60,9 @@ import org.keycloak.protocol.AuthorizationEndpointBase;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.LoginProtocol.Error;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.OIDCWellKnownProvider;
+import org.keycloak.protocol.oidc.OIDCWellKnownProviderFactory;
+import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
 import org.keycloak.protocol.oidc.utils.OIDCResponseMode;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
@@ -69,9 +80,22 @@ import org.keycloak.services.util.CacheControlUtil;
 import org.keycloak.sessions.AuthenticationSessionCompoundId;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
+import org.keycloak.wellknown.WellKnownProvider;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriBuilder;
+import javax.ws.rs.core.UriBuilderException;
+import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Providers;
 import java.net.URI;
 import java.util.Map;
@@ -91,8 +115,6 @@ public class LoginActionsService {
     public static final String REQUIRED_ACTION = "required-action";
     public static final String FIRST_BROKER_LOGIN_PATH = "first-broker-login";
     public static final String POST_BROKER_LOGIN_PATH = "post-broker-login";
-    private static final String GRANT_MANAGEMENT_ACTION_CREATE = "create";
-    private static final String GRANT_MANAGEMENT_ACTION_UPDATE = "update";
 
     public static final String RESTART_PATH = "restart";
 
@@ -846,9 +868,10 @@ public class LoginActionsService {
 
         UserModel user = authSession.getAuthenticatedUser();
         ClientModel client = authSession.getClient();
-        LoginProtocol protocol = session.getProvider(LoginProtocol.class, authSession.getProtocol());
+
 
         if (formData.containsKey("cancel")) {
+            LoginProtocol protocol = session.getProvider(LoginProtocol.class, authSession.getProtocol());
             protocol.setRealm(realm)
                     .setHttpHeaders(headers)
                     .setUriInfo(session.getContext().getUri())
@@ -858,40 +881,10 @@ public class LoginActionsService {
             return response;
         }
 
-        String grantManagementAction = authSession.getAuthNote(OIDCLoginProtocol.GRANT_MANAGEMENT_ACTION_PARAM);
-        if (!GRANT_MANAGEMENT_ACTION_CREATE.equals(grantManagementAction) && !GRANT_MANAGEMENT_ACTION_UPDATE.equals(grantManagementAction)) {
-            protocol.setRealm(realm)
-                    .setHttpHeaders(headers)
-                    .setUriInfo(session.getContext().getUri())
-                    .setEventBuilder(event);
-            Response response = protocol.sendError(authSession, Error.INVALID_GRANT_MANAGEMENT_ACTION);
-            event.error(Errors.INVALID_GRANT_MANAGEMENT_ACTION);
-            return response;
-        }
-
-        UserConsentModel consentModel = null;
-        if (GRANT_MANAGEMENT_ACTION_CREATE.equals(grantManagementAction)) {
-            consentModel = new UserConsentModel(client);
-            consentModel.setGrantId(KeycloakModelUtils.generateId());
-            consentModel.setClaims(formData.getFirst("claims"));
-            consentModel.setAuthorizationDetails(formData.getFirst("authorization_details"));
-            session.users().addConsent(realm, user.getId(), consentModel);
-        }
-
-        if (GRANT_MANAGEMENT_ACTION_UPDATE.equals(grantManagementAction)) {
-            consentModel = session.users().getConsentByGrantId(realm, user.getId(), client.getId(), authSession.getAuthNote(OIDCLoginProtocol.GRANT_ID_PARAM));
-            if (consentModel == null) {
-                protocol.setRealm(realm)
-                        .setHttpHeaders(headers)
-                        .setUriInfo(session.getContext().getUri())
-                        .setEventBuilder(event);
-                Response response = protocol.sendError(authSession, Error.INVALID_GRANT_ID);
-                event.error(Errors.INVALID_GRANT_ID);
-                return response;
-            }
-            consentModel.setClaims(formData.getFirst("claims"));
-            consentModel.setAuthorizationDetails(formData.getFirst("authorization_details"));
-            session.users().updateConsent(realm, user.getId(), consentModel);
+        UserConsentModel grantedConsent = session.users().getConsentByClient(realm, user.getId(), client.getId());
+        if (grantedConsent == null) {
+            grantedConsent = new UserConsentModel(client);
+            session.users().addConsent(realm, user.getId(), grantedConsent);
         }
 
         // Update may not be required if all clientScopes were already granted (May happen for example with prompt=consent)
@@ -900,8 +893,8 @@ public class LoginActionsService {
         for (String clientScopeId : authSession.getClientScopes()) {
             ClientScopeModel clientScope = KeycloakModelUtils.findClientScopeById(realm, client, clientScopeId);
             if (clientScope != null) {
-                if (!consentModel.isClientScopeGranted(clientScope) && clientScope.isDisplayOnConsentScreen()) {
-                    consentModel.addGrantedClientScope(clientScope);
+                if (!grantedConsent.isClientScopeGranted(clientScope) && clientScope.isDisplayOnConsentScreen()) {
+                    grantedConsent.addGrantedClientScope(clientScope);
                     updateConsentRequired = true;
                 }
             } else {
@@ -910,13 +903,52 @@ public class LoginActionsService {
         }
 
         if (updateConsentRequired) {
-            session.users().updateConsent(realm, user.getId(), consentModel);
+            session.users().updateConsent(realm, user.getId(), grantedConsent);
+        }
+
+
+        WellKnownProvider oidcProvider = session.getProvider(WellKnownProvider.class, OIDCWellKnownProviderFactory.PROVIDER_ID);
+        OIDCConfigurationRepresentation config = OIDCConfigurationRepresentation.class.cast(oidcProvider.getConfig());
+
+        if (config.getGrantIdSupported()) {
+
+            UserConsentModel refreshConsent = session.users().getConsentByClient(realm, user.getId(), client.getId());
+            String grantId = authSession.getAuthNote(OIDCLoginProtocol.GRANT_ID_PARAM);
+            GrantService grantService = session.getProvider(GrantService.class);
+            UserGrantModel userGrantModel;
+            if (StringUtils.isEmpty(grantId)) {
+                userGrantModel = new UserGrantModel();
+                grantId = Base64Url.encode(KeycloakModelUtils.generateSecret());
+                userGrantModel.setGrantId(grantId);
+                userGrantModel.setUserConsentId(refreshConsent.getUserConsentId());
+                userGrantModel.setScopes(formData.getFirst("scope"));
+                userGrantModel.setClaims(formData.getFirst("claims"));
+                userGrantModel.setAuthorizationDetails(formData.getFirst("authorization_details"));
+                grantService.adduserGrant(realm, user.getId(), clientId, userGrantModel);
+            } else {
+                userGrantModel = grantService.getGrantByGrantId(realm, grantId, user.getId());
+                if (userGrantModel == null) {
+                    LoginProtocol protocol = session.getProvider(LoginProtocol.class, authSession.getProtocol());
+                    protocol.setRealm(realm)
+                            .setHttpHeaders(headers)
+                            .setUriInfo(session.getContext().getUri())
+                            .setEventBuilder(event);
+                    Response response = protocol.sendError(authSession, Error.INVALID_GRANT_ID);
+                    event.error(Errors.INVALID_GRANT_ID);
+                    return response;
+                }
+                userGrantModel.setScopes(formData.getFirst("scope"));
+                userGrantModel.setClaims(formData.getFirst("claims"));
+                userGrantModel.setAuthorizationDetails(formData.getFirst("authorization_details"));
+                grantService.updateUserGrant(realm, user.getId(), clientId, userGrantModel);
+            }
+
+            authSession.setClientNote(OIDCLoginProtocol.GRANT_ID_PARAM, grantId);
         }
 
         event.detail(Details.CONSENT, Details.CONSENT_VALUE_CONSENT_GRANTED);
         event.success();
 
-        authSession.setClientNote(OIDCLoginProtocol.GRANT_ID_PARAM, consentModel.getGrantId());
         ClientSessionContext clientSessionCtx = AuthenticationProcessor.attachSession(authSession, null, session, realm, clientConnection, event);
         return AuthenticationManager.redirectAfterSuccessfulFlow(session, realm, clientSessionCtx.getClientSession().getUserSession(), clientSessionCtx, request, session.getContext().getUri(), clientConnection, event, authSession);
     }

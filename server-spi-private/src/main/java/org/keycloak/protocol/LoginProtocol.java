@@ -68,10 +68,7 @@ public interface LoginProtocol extends Provider {
          * grant_id is unknown
          */
         INVALID_GRANT_ID,
-        /**
-         * grant management action is unknown
-         */
-        INVALID_GRANT_MANAGEMENT_ACTION;
+
     }
 
     LoginProtocol setSession(KeycloakSession session);

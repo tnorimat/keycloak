@@ -81,7 +81,6 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
     // KEYCLOAK-7451 OAuth Authorization Server Metadata for Proof Key for Code Exchange
     public static final List<String> DEFAULT_CODE_CHALLENGE_METHODS_SUPPORTED = list(OAuth2Constants.PKCE_METHOD_PLAIN, OAuth2Constants.PKCE_METHOD_S256);
 
-    public static final List<String> DEFAULT_GRANT_MANAGEMENT_ACTION_SUPPORTED = list("create", "update", "query", "revoke");
 
     private KeycloakSession session;
 
@@ -170,7 +169,7 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
         config.setBackchannelLogoutSupported(true);
         config.setBackchannelLogoutSessionSupported(true);
 
-        config.setGrantManagementActionsSupported(DEFAULT_GRANT_MANAGEMENT_ACTION_SUPPORTED);
+        config.setGrantIdSupported(true);
         config.setGrantManagementEndpoint(backendUriBuilder.clone().path(OIDCLoginProtocolService.class, "grants").build(realm.getName(), OIDCLoginProtocol.LOGIN_PROTOCOL).toString());
 
         return config;

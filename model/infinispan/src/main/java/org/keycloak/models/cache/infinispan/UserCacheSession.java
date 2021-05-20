@@ -19,22 +19,10 @@ package org.keycloak.models.cache.infinispan;
 
 import org.jboss.logging.Logger;
 import org.keycloak.cluster.ClusterProvider;
-import org.keycloak.models.ClientScopeModel;
-import org.keycloak.models.IdentityProviderModel;
+import org.keycloak.models.*;
 import org.keycloak.models.cache.infinispan.events.InvalidationEvent;
 import org.keycloak.common.constants.ServiceAccountConstants;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.FederatedIdentityModel;
-import org.keycloak.models.GroupModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakTransaction;
-import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.RoleModel;
-import org.keycloak.models.UserConsentModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserProvider;
 import org.keycloak.models.cache.CachedUserModel;
 import org.keycloak.models.cache.OnUserCache;
 import org.keycloak.models.cache.UserCache;
@@ -659,11 +647,6 @@ public class UserCacheSession implements UserCache.Streams {
         return getDelegate().revokeConsentForClient(realm, userId, clientInternalId);
     }
 
-    @Override
-    public boolean revokeConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
-        return false;
-    }
-
     static String getConsentCacheKey(String userId) {
         return userId + ".consents";
     }
@@ -700,11 +683,6 @@ public class UserCacheSession implements UserCache.Streams {
         CachedUserConsent cachedConsent = cached.getConsents().get(clientId);
         if (cachedConsent == null) return null;
         return toConsentModel(realm, cachedConsent);
-    }
-
-    @Override
-    public UserConsentModel getConsentByGrantId(RealmModel realm, String userId, String clientInternalId, String grandId) {
-        return null;
     }
 
     @Override
