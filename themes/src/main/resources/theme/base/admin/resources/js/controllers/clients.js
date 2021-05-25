@@ -1111,6 +1111,9 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
     // KEYCLOAK-6771 Certificate Bound Token
     // https://tools.ietf.org/html/draft-ietf-oauth-mtls-08#section-3
     $scope.tlsClientCertificateBoundAccessTokens = false;
+    $scope.tlsClientCertificateExtendedValidation = false;
+    $scope.tlsClientCertificateExtendedValidationImpl = client.attributes['tls.client.certificate.extended.validation.impl'];
+    $scope.tlsClientCertificateExtendedValidationImpls = serverInfo.listProviderIds('tls-client-extended-validation-impl');
 
     $scope.accessTokenLifespan = TimeUnit2.asUnit(client.attributes['access.token.lifespan']);
     $scope.samlAssertionLifespan = TimeUnit2.asUnit(client.attributes['saml.assertion.lifespan']);
@@ -1289,6 +1292,16 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
            }
        }
 
+        if ($scope.client.attributes["tls.client.certificate.extended.validation"]) {
+            $scope.tlsClientCertificateExtendedValidation = $scope.client.attributes["tls.client.certificate.extended.validation"] === "true";
+        }
+
+        if ($scope.client.attributes['tls.client.certificate.extended.validation.impl']==null){
+            $scope.tlsClientCertificateExtendedValidationImpl = '';
+        } else {
+            $scope.tlsClientCertificateExtendedValidationImpl = $scope.client.attributes['tls.client.certificate.extended.validation.impl'];
+        }
+
         var useRefreshToken = $scope.client.attributes["client_credentials.use_refresh_token"];
         if (useRefreshToken === "true") {
             $scope.useRefreshTokenForClientCredentialsGrant = true;
@@ -1445,6 +1458,10 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
 
     $scope.changePkceCodeChallengeMethod = function() {
         $scope.clientEdit.attributes['pkce.code.challenge.method'] = $scope.pkceCodeChallengeMethod;
+    };
+
+    $scope.changeMtlsExtendedValidationImpl = function() {
+        $scope.clientEdit.attributes['tls.client.certificate.extended.validation.impl'] = $scope.tlsClientCertificateExtendedValidationImpl;
     };
 
     $scope.$watch(function() {
@@ -1671,6 +1688,15 @@ module.controller('ClientDetailCtrl', function($scope, realm, client, flows, $ro
         } else {
             $scope.clientEdit.attributes["tls.client.certificate.bound.access.tokens"] = "false";
         }
+
+        $scope.clientEdit.attributes["tls.client.certificate.extended.validation"] = $scope.tlsClientCertificateExtendedValidation && $scope.tlsClientCertificateBoundAccessTokens === true
+          ? "true"
+          : "false";
+
+
+        $scope.clientEdit.attributes["tls.client.certificate.extended.validation.impl"] = $scope.tlsClientCertificateExtendedValidationImpl === 'none' || !$scope.tlsClientCertificateExtendedValidation
+          ? null
+          : $scope.tlsClientCertificateExtendedValidationImpl;
 
         // KEYCLOAK-9551 Client Credentials Grant generates refresh token
         // https://tools.ietf.org/html/rfc6749#section-4.4.3

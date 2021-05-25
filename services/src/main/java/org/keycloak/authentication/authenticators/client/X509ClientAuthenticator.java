@@ -1,18 +1,24 @@
 package org.keycloak.authentication.authenticators.client;
 
 import org.keycloak.OAuth2Constants;
+import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.ClientAuthenticationFlowContext;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.ClientModel;
+import org.keycloak.mtls.MtlsExtendedValidationProvider;
+import org.keycloak.mtls.MtlsValidationException;
+import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.provider.ProviderFactory;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.services.x509.X509ClientCertificateLookup;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.nio.file.ProviderNotFoundException;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -127,6 +133,22 @@ public class X509ClientAuthenticator extends AbstractClientAuthenticator {
             logger.debug("[X509ClientCertificateAuthenticator:authenticate] Matched " + matchedCertificate.get() + " certificate.");
         }
 
+        boolean mtlsExtendedValidationEnabled = Boolean.parseBoolean(client.getAttribute(OIDCConfigAttributes.USE_MTLS_EXTENDED_VALIDATION));
+        if (mtlsExtendedValidationEnabled) {
+            MtlsExtendedValidationProvider mtlsExtendedValidationProvider = getMtlsExtendedValidationProvider(mtlsExtendedValidationEnabled, context, client);
+            Map<String,String> additionalDetails = mtlsExtendedValidationProvider.parseAdditionalFields(certs);
+            additionalDetails.forEach((k,v)->{
+                context.getEvent().detail(k, v);
+            });
+            try {
+                mtlsExtendedValidationProvider.performAdditionalValidation(certs);
+            } catch (MtlsValidationException e) {
+                logger.debug("[X509ClientCertificateAuthenticator:authenticate] There were errors during extended certificate validation: "+e.getValidationFailureCause());
+                context.attempted();
+                return;
+            }
+        }
+
         context.success();
     }
 
@@ -178,5 +200,18 @@ public class X509ClientAuthenticator extends AbstractClientAuthenticator {
     @Override
     public String getId() {
         return PROVIDER_ID;
+    }
+
+    private MtlsExtendedValidationProvider getMtlsExtendedValidationProvider(boolean mtlsExtendedValidationEnabled, ClientAuthenticationFlowContext context, ClientModel client) {
+        if (!mtlsExtendedValidationEnabled) {
+            return null;
+        } else {
+            String requiredProviderId = client.getAttribute(OIDCConfigAttributes.USE_MTLS_EXTENDED_VALIDATION_IMPL);
+            ProviderFactory<MtlsExtendedValidationProvider> factory = context.getSession().getKeycloakSessionFactory()
+                                                                              .getProviderFactoriesStream(MtlsExtendedValidationProvider.class)
+                                                                              .filter(f -> f.getId().equals(requiredProviderId)).findFirst()
+                                                                              .orElseThrow(() -> new ProviderNotFoundException("MTLS Extended validation Provider Not Found! Please specify your provider in your Clients Advanced Settings!"));
+            return factory.create(context.getSession());
+        }
     }
 }
