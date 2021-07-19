@@ -34,6 +34,8 @@ import org.keycloak.protocol.oidc.endpoints.AuthorizationEndpoint;
 import org.keycloak.protocol.oidc.endpoints.TokenEndpoint;
 import org.keycloak.protocol.oidc.grants.ciba.CibaGrantType;
 import org.keycloak.protocol.oidc.grants.device.endpoints.DeviceEndpoint;
+import org.keycloak.protocol.oidc.grants.management.Constants;
+import org.keycloak.protocol.oidc.grants.management.GrantManagementRootEndpoint;
 import org.keycloak.protocol.oidc.par.endpoints.ParEndpoint;
 import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
@@ -178,6 +180,10 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
 
         config.setBackchannelLogoutSupported(true);
         config.setBackchannelLogoutSessionSupported(true);
+
+        config.setGrantManagementActionRequired(false);
+        config.setGrantManagementActionsSupported(Constants.GRANT_MANAGEMENT_ACTIONS);
+        config.setGrantManagementEndpoint(GrantManagementRootEndpoint.grantManagementUrl(backendUriInfo.getBaseUriBuilder()).build(realm.getName()).toString());
 
         config.setBackchannelTokenDeliveryModesSupported(DEFAULT_BACKCHANNEL_TOKEN_DELIVERY_MODES_SUPPORTED);
         config.setBackchannelAuthenticationEndpoint(CibaGrantType.authorizationUrl(backendUriInfo.getBaseUriBuilder()).build(realm.getName()).toString());

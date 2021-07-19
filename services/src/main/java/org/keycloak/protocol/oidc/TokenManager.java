@@ -1131,6 +1131,12 @@ public class TokenManager {
             res.setScope(responseScope);
             event.detail(Details.SCOPE, responseScope);
 
+            AuthenticatedClientSessionModel clientSession = clientSessionCtx.getClientSession();
+            String grantId = clientSession.getNote(OIDCLoginProtocol.GRANT_ID_PARAM);
+            if (grantId != null ) {
+                res.setGrantId(grantId);
+            }
+
             return res;
         }
 

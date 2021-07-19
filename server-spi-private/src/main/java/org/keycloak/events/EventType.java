@@ -151,7 +151,11 @@ public enum EventType {
 
     // PAR request.
     PUSHED_AUTHORIZATION_REQUEST(false),
-    PUSHED_AUTHORIZATION_REQUEST_ERROR(false);
+    PUSHED_AUTHORIZATION_REQUEST_ERROR(false),
+
+    //Grant Management
+    QUERY_GRANT(false),
+    QUERY_GRANT_ERROR(false);
 
 
     private boolean saveByDefault;

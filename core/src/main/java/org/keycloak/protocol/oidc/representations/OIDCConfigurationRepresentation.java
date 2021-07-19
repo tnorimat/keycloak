@@ -151,6 +151,16 @@ public class OIDCConfigurationRepresentation {
     @JsonProperty("backchannel_logout_session_supported")
     private Boolean backchannelLogoutSessionSupported;
 
+    // OAuth Authorization Server Metadata for fapi-grant-management
+    @JsonProperty("grant_management_action_required")
+    private Boolean grantManagementActionRequired;
+
+    @JsonProperty("grant_management_actions_supported")
+    private List<String> grantManagementActionsSupported;
+
+    @JsonProperty("grant_management_endpoint")
+    private String grantManagementEndpoint;
+
     @JsonProperty("device_authorization_endpoint")
     private String deviceAuthorizationEndpoint;
 
@@ -170,6 +180,30 @@ public class OIDCConfigurationRepresentation {
     private String pushedAuthorizationRequestEndpoint;
 
     protected Map<String, Object> otherClaims = new HashMap<String, Object>();
+
+    public Boolean getGrantManagementActionRequired() {
+        return grantManagementActionRequired;
+    }
+
+    public void setGrantManagementActionRequired(Boolean grantManagementActionRequired) {
+        this.grantManagementActionRequired = grantManagementActionRequired;
+    }
+
+    public List<String> getGrantManagementActionsSupported() {
+        return grantManagementActionsSupported;
+    }
+
+    public void setGrantManagementActionsSupported(List<String> grantManagementActionsSupported) {
+        this.grantManagementActionsSupported = grantManagementActionsSupported;
+    }
+
+    public String getGrantManagementEndpoint() {
+        return grantManagementEndpoint;
+    }
+
+    public void setGrantManagementEndpoint(String grantManagementEndpoint) {
+        this.grantManagementEndpoint = grantManagementEndpoint;
+    }
 
     public String getIssuer() {
         return issuer;

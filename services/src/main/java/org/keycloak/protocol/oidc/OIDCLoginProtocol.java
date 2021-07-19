@@ -89,6 +89,9 @@ public class OIDCLoginProtocol implements LoginProtocol {
     public static final String UI_LOCALES_PARAM = OAuth2Constants.UI_LOCALES_PARAM;
     public static final String CLAIMS_PARAM = "claims";
     public static final String ACR_PARAM = "acr_values";
+    public static final String GRANT_ID_PARAM = "grant_id";
+    public static final String GRANT_MANAGEMENT_ACTION = "grant_management_action";
+    public static final String AUTHORIZATION_DETAILS_PARAM = "authorization_details";
     public static final String ID_TOKEN_HINT = "id_token_hint";
 
     public static final String LOGOUT_REDIRECT_URI = "OIDC_LOGOUT_REDIRECT_URI";

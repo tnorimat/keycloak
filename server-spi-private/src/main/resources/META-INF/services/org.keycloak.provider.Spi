@@ -38,6 +38,7 @@ org.keycloak.models.UserLoginFailureSpi
 org.keycloak.models.UserSpi
 org.keycloak.models.session.UserSessionPersisterSpi
 org.keycloak.models.dblock.DBLockSpi
+org.keycloak.models.GrantManagementSpi
 org.keycloak.migration.MigrationSpi
 org.keycloak.events.EventListenerSpi
 org.keycloak.events.EventStoreSpi
