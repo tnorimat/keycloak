@@ -70,6 +70,8 @@ public final class OIDCConfigAttributes {
     public static final String AUTHORIZATION_ENCRYPTED_RESPONSE_ALG = "authorization.encrypted.response.alg";
     public static final String AUTHORIZATION_ENCRYPTED_RESPONSE_ENC = "authorization.encrypted.response.enc";
 
+    public static final String AUTHORIZATION_DETAILS_TYPES = "authorization_details_types";
+
     private OIDCConfigAttributes() {
     }
 

@@ -61,6 +61,9 @@ public class AccessTokenResponse {
     @JsonProperty("scope")
     protected String scope;
 
+    @JsonProperty("authorization_details")
+    protected String authorizationDetails;
+
     @JsonProperty("error")
     protected String error;
 
@@ -76,6 +79,14 @@ public class AccessTokenResponse {
 
     public void setScope(String scope) {
         this.scope = scope;
+    }
+
+    public String getAuthorizationDetails() {
+        return authorizationDetails;
+    }
+
+    public void setAuthorizationDetails(String authorizationDetails) {
+        this.authorizationDetails = authorizationDetails;
     }
 
     public String getToken() {

@@ -56,6 +56,7 @@ public class OAuthErrorException extends Exception {
     public static final String INVALID_GRANT = "invalid_grant";
     public static final String UNSUPPORTED_GRANT_TYPE = "unsupported_grant_type";
     public static final String UNSUPPORTED_TOKEN_TYPE = "unsupported_token_type";
+    public static final String INVALID_AUTHORIZATION_DETAILS = "invalid_authorization_details";
 
     public OAuthErrorException(String error, String description, String message, Throwable cause) {
         super(message, cause);

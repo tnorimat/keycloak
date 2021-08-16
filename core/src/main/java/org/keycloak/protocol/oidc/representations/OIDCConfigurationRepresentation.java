@@ -169,6 +169,12 @@ public class OIDCConfigurationRepresentation {
     @JsonProperty("pushed_authorization_request_endpoint")
     private String pushedAuthorizationRequestEndpoint;
 
+    @JsonProperty("authorization_details_types_supported")
+    private List<String> authorizationDetailsTypesSupported;
+
+    @JsonProperty("authorization_details_supported")
+    private Boolean authorizationDetailsSupported;
+
     protected Map<String, Object> otherClaims = new HashMap<String, Object>();
 
     public String getIssuer() {
@@ -501,6 +507,22 @@ public class OIDCConfigurationRepresentation {
 
     public void setRequirePushedAuthorizationRequests(Boolean requirePushedAuthorizationRequests) {
         this.requirePushedAuthorizationRequests = requirePushedAuthorizationRequests;
+    }
+
+    public List<String> getAuthorizationDetailsTypesSupported() {
+        return authorizationDetailsTypesSupported;
+    }
+
+    public void setAuthorizationDetailsTypesSupported(List<String> authorizationDetailsTypesSupported) {
+        this.authorizationDetailsTypesSupported = authorizationDetailsTypesSupported;
+    }
+
+    public Boolean getAuthorizationDetailsSupported() {
+        return authorizationDetailsSupported;
+    }
+
+    public void setAuthorizationDetailsSupported(Boolean authorizationDetailsSupported) {
+        this.authorizationDetailsSupported = authorizationDetailsSupported;
     }
 
     @JsonAnyGetter

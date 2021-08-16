@@ -35,6 +35,7 @@ import org.keycloak.protocol.oidc.endpoints.TokenEndpoint;
 import org.keycloak.protocol.oidc.grants.ciba.CibaGrantType;
 import org.keycloak.protocol.oidc.grants.device.endpoints.DeviceEndpoint;
 import org.keycloak.protocol.oidc.par.endpoints.ParEndpoint;
+import org.keycloak.protocol.oidc.rar.RichAuthzRequestProvider;
 import org.keycloak.protocol.oidc.representations.OIDCConfigurationRepresentation;
 import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.provider.Provider;
@@ -57,6 +58,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Collections;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -186,6 +188,9 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
         config.setPushedAuthorizationRequestEndpoint(ParEndpoint.parUrl(backendUriInfo.getBaseUriBuilder()).build(realm.getName()).toString());
         config.setRequirePushedAuthorizationRequests(Boolean.FALSE);
 
+        config.setAuthorizationDetailsTypesSupported(getAuthorizationDetailsTypesSupported());
+        config.setAuthorizationDetailsSupported(Boolean.TRUE);
+
         return config;
     }
 
@@ -203,6 +208,14 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
                 .map(caf -> caf.getProtocolAuthenticatorMethods(OIDCLoginProtocol.LOGIN_PROTOCOL))
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
+    }
+
+    private List<String> getAuthorizationDetailsTypesSupported() {
+        RichAuthzRequestProvider richAuthzRequestProvider = session.getProvider(RichAuthzRequestProvider.class);
+        if (richAuthzRequestProvider != null) {
+            return richAuthzRequestProvider.getAuthorizationDetailsTypesSupported();
+        }
+        return Collections.emptyList();
     }
 
     private List<String> getSupportedAlgorithms(Class<? extends Provider> clazz, boolean includeNone) {

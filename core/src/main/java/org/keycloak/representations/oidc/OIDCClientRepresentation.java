@@ -125,6 +125,8 @@ public class OIDCClientRepresentation {
     
     private Boolean backchannel_logout_revoke_offline_tokens;
 
+    private List<String> authorization_details_types;
+
     // OIDC CIBA
     private String backchannel_token_delivery_mode;
 
@@ -502,6 +504,13 @@ public class OIDCClientRepresentation {
         this.tls_client_auth_subject_dn = tls_client_auth_subject_dn;
     }
 
+    public List<String> getAuthorizationDetailsTypes() {
+        return authorization_details_types;
+    }
+
+    public void setAuthorizationDetailsTypes(List<String> authorization_details_types) {
+        this.authorization_details_types = authorization_details_types;
+    }
     public String getBackchannelTokenDeliveryMode() {
         return backchannel_token_delivery_mode;
     }

@@ -253,6 +253,12 @@ public class OIDCAdvancedConfigWrapper {
         setAttribute(OIDCConfigAttributes.BACKCHANNEL_LOGOUT_REVOKE_OFFLINE_TOKENS, val);
     }
 
+    public List<String> getAuthorizationDetailsTypes() { return getAttributeMultivalued(OIDCConfigAttributes.AUTHORIZATION_DETAILS_TYPES); }
+
+    public void setAuthorizationDetailsTypes(List<String> authorization_details_types) {
+        setAttributeMultivalued(OIDCConfigAttributes.AUTHORIZATION_DETAILS_TYPES, authorization_details_types);
+    }
+
     private String getAttribute(String attrKey) {
         if (clientModel != null) {
             return clientModel.getAttribute(attrKey);

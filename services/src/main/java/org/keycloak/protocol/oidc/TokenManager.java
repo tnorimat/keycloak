@@ -1131,6 +1131,12 @@ public class TokenManager {
             res.setScope(responseScope);
             event.detail(Details.SCOPE, responseScope);
 
+
+            String authorizationDetails = clientSessionCtx.getClientSession().getNote(OIDCLoginProtocol.AUTHORIZATION_DETAILS);
+            if (authorizationDetails != null ) {
+                res.setAuthorizationDetails(authorizationDetails);
+            }
+
             return res;
         }
 
