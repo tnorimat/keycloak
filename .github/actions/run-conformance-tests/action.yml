@@ -1,0 +1,100 @@
+name: run-conformance-tests
+run-name: ${{ github.actor }} is running GitHub Actions for automatic conformance tests run
+on:
+  workflow_dispatch:
+jobs:
+  build-local-keycloak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./mvnw clean install -DskipTests -DskipExamples -Pdistribution
+      - uses: actions/upload-artifact@v2
+        with:
+          name: keycloak-999.0.0-SNAPSHOT.tar.gz
+          path: ./quarkus/dist/target/keycloak-999.0.0-SNAPSHOT.tar.gz
+  run-conformance-test:
+    needs: [build-local-keycloak]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [fapi-aus-cdr, fapi-ciba, fapi-uk-ob, fapi1-advanced, fapi2-ms-id2, fapi2-sp-id2, ob-br-fapi1-advanced, oidcc, oidcc-logout]
+    defaults:
+      run:
+        working-directory: ./
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: keycloak-999.0.0-SNAPSHOT.tar.gz
+      - uses: actions/checkout@v3
+        with:
+          repository: tnorimat/keycloak-fapi
+          path: conformance-tests
+      - run: tar -zxvf keycloak-999.0.0-SNAPSHOT.tar.gz
+      - run: sudo curl -L https://github.com/docker/compose/releases/download/1.27.4/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose;sudo chmod +x /usr/local/bin/docker-compose
+      - run: sudo echo "127.0.0.1 as.keycloak-fapi.org aes.keycloak-fapi.org rs.keycloak-fapi.org cs.keycloak-fapi.org conformance-suite.keycloak-fapi.org" | sudo tee -a /etc/hosts
+      - run: /usr/local/bin/docker-compose -p keycloak-fapi -f conformance-tests-env/docker-compose-local.yml up --build --exit-code-from test_runner | tee outputs.txt
+        env:
+          OPENID_GIT_URL: https://gitlab.com/openid/conformance-suite.git
+          OPENID_GIT_TAG: release-v5.1.7
+          RESOURCE_FQDN: rs.keycloak-fapi.org
+          CONSENT_FQDN: cs.keycloak-fapi.org
+          CONFORMANCE_SUITE_FQDN: conformance-suite.keycloak-fapi.org
+          AUTOMATE_TESTS: true
+          TEST_PLAN: --${{ matrix.profile }}-all
+          KEYCLOAK_BASE_IMAGE: quay.io/keycloak/keycloak:23.0.3
+          KEYCLOAK_REALM: test
+          KEYCLOAK_USER: admin
+          KEYCLOAK_PASSWORD: admin
+          KEYCLOAK_REALM_IMPORT_FILENAME: realm-${{ matrix.profile }}.json
+          KEYCLOAK_FQDN: as.keycloak-fapi.org
+          AUTH_ENTITY_FQDN: aes.keycloak-fapi.org
+          KEYCLOAK_FRONTEND_URL: https://as.keycloak-fapi.org/auth
+          KEYCLOAK_INTROSPECTION_ENDPOINT_FROM_API_GATEWAY: https://as.keycloak-fapi.org/auth/realms/test/protocol/openid-connect/token/introspect
+          KEYCLOAK_SPI_0: custom-spi.txt
+          MVN_HOME: ~/.m2
+      - if: always()
+        run: echo '${{ toJSON(matrix) }}' > ./matrix.txt
+      - if: always()
+        id: generate-unique-id
+        run: echo '::set-output name=result::${{ hashFiles('./matrix.txt') }}'
+      - if: always()
+        id: generate-outputs
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs')
+            const id = "${{ steps.generate-unique-id.outputs.result }}"
+            const matrix = ${{ toJSON(matrix) }}
+            const status = "${{ job.status }}"
+            const exportedValues = {}
+            const outputs = { matrix, status, id, exportedValues }
+            fs.writeFileSync("${{ github.workspace }}/outputs.txt", JSON.stringify(outputs))
+      - if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: outputs-${{ steps.generate-unique-id.outputs.result }}
+          path: ${{ github.workspace }}/outputs.txt
+  evaluate-test-results:
+    needs: [run-conformance-test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          path: matrix-job-outputs
+      - uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+
+            const directory = path.resolve('./matrix-job-outputs')
+
+            for (const dirName of fs.readdirSync(directory)) {
+              const filePath = path.join(directory, dirName, 'outputs.txt')
+              console.log(filePath)
+            }
