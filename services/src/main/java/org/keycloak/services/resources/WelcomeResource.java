@@ -19,6 +19,8 @@ package org.keycloak.services.resources;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.OPTIONS;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -33,6 +35,7 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.Provider;
 
 import org.jboss.logging.Logger;
+import org.keycloak.OAuthErrorException;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.Profile;
 import org.keycloak.common.Version;
@@ -44,19 +47,26 @@ import org.keycloak.cookie.CookieType;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelException;
+import org.keycloak.models.RealmModel;
+import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.ServicesLogger;
+import org.keycloak.services.cors.Cors;
 import org.keycloak.services.managers.ApplianceBootstrap;
+import org.keycloak.services.managers.RealmManager;
 import org.keycloak.services.util.CacheControlUtil;
 import org.keycloak.theme.Theme;
 import org.keycloak.theme.freemarker.FreeMarkerProvider;
 import org.keycloak.urls.UrlType;
 import org.keycloak.utils.MediaType;
 import org.keycloak.utils.SecureContextResolver;
+import org.keycloak.wellknown.WellKnownProvider;
+import org.keycloak.wellknown.WellKnownProviderFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -299,6 +309,58 @@ public class WelcomeResource {
 
         if (cookieStateChecker == null || !cookieStateChecker.equals(formStateChecker)) {
             throw new ForbiddenException();
+        }
+    }
+
+    @OPTIONS
+    @Path("/.well-known/{provider}/realms/{realm}")
+    @Produces(jakarta.ws.rs.core.MediaType.APPLICATION_JSON)
+    public Response getVersionPreflight(final @PathParam("realm") String name,
+                                        final @PathParam("provider") String providerName) {
+        return Cors.builder().allowedMethods("GET").preflight().auth().add(Response.ok());
+    }
+
+    @GET
+    @Path("/.well-known/{alias}/realms/{realm}")
+    @Produces(jakarta.ws.rs.core.MediaType.APPLICATION_JSON)
+    public Response getWellKnown(final @PathParam("realm") String name,
+                                 final @PathParam("alias") String alias) {
+        resolveRealmAndUpdateSession(name);
+        checkSsl(session.getContext().getRealm());
+
+        WellKnownProviderFactory wellKnownProviderFactoryFound = session.getKeycloakSessionFactory().getProviderFactoriesStream(WellKnownProvider.class)
+                .map(providerFactory -> (WellKnownProviderFactory) providerFactory)
+                .filter(wellKnownProviderFactory -> alias.equals(wellKnownProviderFactory.getAlias()))
+                .sorted(Comparator.comparingInt(WellKnownProviderFactory::getPriority))
+                .findFirst().orElseThrow(NotFoundException::new);
+
+        logger.tracef("Use provider with ID '%s' for well-known alias '%s'", wellKnownProviderFactoryFound.getId(), alias);
+
+        WellKnownProvider wellKnown = session.getProvider(WellKnownProvider.class, wellKnownProviderFactoryFound.getId());
+
+        if (wellKnown != null) {
+            Response.ResponseBuilder responseBuilder = Response.ok(wellKnown.getConfig()).cacheControl(CacheControlUtil.noCache());
+            return Cors.builder().allowAllOrigins().auth().add(responseBuilder);
+        }
+
+        throw new NotFoundException();
+    }
+
+    private void resolveRealmAndUpdateSession(String realmName) {
+        RealmManager realmManager = new RealmManager(session);
+        RealmModel realm = realmManager.getRealmByName(realmName);
+        if (realm == null) {
+            throw new NotFoundException("Realm does not exist");
+        }
+        session.getContext().setRealm(realm);
+    }
+    private void checkSsl(RealmModel realm) {
+        if (!"https".equals(session.getContext().getUri().getBaseUri().getScheme())
+                && realm.getSslRequired().isRequired(session.getContext().getConnection())) {
+            HttpRequest request = session.getContext().getHttpRequest();
+            Cors cors = Cors.builder().auth().allowedMethods(request.getHttpMethod()).auth().exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
+            throw new CorsErrorResponseException(cors.allowAllOrigins(), OAuthErrorException.INVALID_REQUEST, "HTTPS required",
+                    Response.Status.FORBIDDEN);
         }
     }
 
