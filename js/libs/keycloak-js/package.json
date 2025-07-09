@@ -72,7 +72,7 @@
     "@rollup/plugin-typescript": "^11.1.6",
     "es6-promise": "^4.2.8",
     "rollup": "^4.9.6",
-    "shx": "^0.3.4"
+    "shx": "^0.4.0"
   },
   "dependencies": {
     "js-sha256": "^0.11.0",
