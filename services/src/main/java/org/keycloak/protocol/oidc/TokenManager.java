@@ -253,6 +253,9 @@ public class TokenManager {
         }
         clientSessionCtx.setAttribute(Constants.GRANT_TYPE, OAuth2Constants.REFRESH_TOKEN);
 
+        // Set resource an attribute in the ClientSessionContext. Will be used for the token refresh
+        clientSessionCtx.setAttribute(OAuth2Constants.RESOURCE, clientSession.getNote(OAuth2Constants.RESOURCE));
+
         // recreate token.
         AccessToken newToken = createClientAccessToken(session, realm, client, user, userSession, clientSessionCtx);
 
@@ -585,6 +588,9 @@ public class TokenManager {
         Map<String, String> transferredNotes = authSession.getClientNotes();
         for (Map.Entry<String, String> entry : transferredNotes.entrySet()) {
             clientSession.setNote(entry.getKey(), entry.getValue());
+        }
+        if (authSession.getClientNote(OAuth2Constants.RESOURCE) == null && clientSession.getNote(OAuth2Constants.RESOURCE) != null) {
+            clientSession.removeNote(OAuth2Constants.RESOURCE);
         }
 
         Map<String, String> transferredUserSessionNotes = authSession.getUserSessionNotes();

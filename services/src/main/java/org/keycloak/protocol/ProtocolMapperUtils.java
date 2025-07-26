@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import org.keycloak.common.Profile;
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
@@ -33,6 +34,7 @@ import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
+import org.keycloak.services.clientpolicy.executor.ResourceAudienceBindExecutor;
 import org.keycloak.services.util.DPoPUtil;
 
 /**
@@ -164,6 +166,9 @@ public class ProtocolMapperUtils {
 
         if (OIDCLoginProtocol.LOGIN_PROTOCOL.equals(ctx.getClientSession().getClient().getProtocol())) {
             protocolMapperStream = Stream.concat(protocolMapperStream, DPoPUtil.getTransientProtocolMapper());
+        }
+        if (Profile.isFeatureEnabled(Profile.Feature.RESOURCE_TOKEN_AUDIENCE_BIND)) {
+            protocolMapperStream = Stream.concat(protocolMapperStream, ResourceAudienceBindExecutor.getTransientProtocolMapper());
         }
 
         return protocolMapperStream.sorted(Comparator.comparing(ProtocolMapperUtils::compare));

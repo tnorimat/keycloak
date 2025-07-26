@@ -216,6 +216,9 @@ public class AuthorizationCodeGrantType extends OAuth2GrantTypeBase {
         // Set nonce as an attribute in the ClientSessionContext. Will be used for the token generation
         clientSessionCtx.setAttribute(OIDCLoginProtocol.NONCE_PARAM, codeData.getNonce());
 
+        // Set resource an attribute in the ClientSessionContext. Will be used for the token generation
+        clientSessionCtx.setAttribute(OIDCLoginProtocol.RESOURCE_PARAM, clientSession.getNote(OAuth2Constants.RESOURCE));
+
         // Process authorization_details using provider discovery (if present in request)
         List<AuthorizationDetailsJSONRepresentation> authorizationDetailsResponse = null;
         String providedAuthorizationDetails = formParams.getFirst(AUTHORIZATION_DETAILS);
