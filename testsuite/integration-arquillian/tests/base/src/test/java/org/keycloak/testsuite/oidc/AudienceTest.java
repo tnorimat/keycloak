@@ -26,7 +26,9 @@ import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientScopeResource;
 import org.keycloak.models.utils.KeycloakModelUtils;
+import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
+import org.keycloak.protocol.oidc.mappers.ResourceAudienceProtocolMapper;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ClientScopeRepresentation;
@@ -175,6 +177,32 @@ public class AudienceTest extends AbstractOIDCScopeTest {
         clientScope.getProtocolMappers().delete(mapper2Id);
     }
 
+    @Test
+    public void testResourceAudienceProtocolMapper() throws Exception {
+        // Add audience protocol mapper to the clientScope "audience-scope"
+        ProtocolMapperRepresentation resourceAudienceMapper =  ModelToRepresentation.toRepresentation(
+                ResourceAudienceProtocolMapper.createClaimMapper("resource audience mapper 1", true, true, true)
+        );
+        ClientScopeResource clientScope = ApiUtil.findClientScopeByName(testRealm(), "audience-scope");
+        Response resp = clientScope.getProtocolMappers().createMapper(resourceAudienceMapper);
+        String mapperId = ApiUtil.getCreatedId(resp);
+        resp.close();
+
+        // Login and check audiences in the token
+        oauth.scope("openid audience-scope");
+        oauth.loginForm().param("resource","https%3A%2F%2Fresource.example.com%2Fv1%2Fmcp").doLogin("john", "password");
+
+        //oauth.param().doLogin("john", "password");
+        EventRepresentation loginEvent = events.expectLogin()
+                .user(userId)
+                .assertEvent();
+        Tokens tokens = sendTokenRequest(loginEvent, userId, "openid profile email audience-scope", "test-app");
+
+        assertAudiences(tokens.accessToken, "https://resource.example.com/v1/mcp");
+
+        // Revert
+        clientScope.getProtocolMappers().delete(mapperId);
+    }
 
     private void assertAudiences(JsonWebToken token, String... expectedAudience) {
         Collection<String> audiences = token.getAudience() == null ? Collections.emptyList() : Arrays.asList(token.getAudience());
