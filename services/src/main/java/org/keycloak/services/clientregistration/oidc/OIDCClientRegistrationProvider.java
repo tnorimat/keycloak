@@ -44,6 +44,7 @@ import org.keycloak.services.clientregistration.ErrorCodes;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.OPTIONS;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -51,6 +52,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.keycloak.services.cors.Cors;
 import org.keycloak.urls.UrlType;
 
 import java.net.URI;
@@ -71,10 +73,17 @@ public class OIDCClientRegistrationProvider extends AbstractClientRegistrationPr
         super(session);
     }
 
+    @OPTIONS
+    public Response preflight() {
+        return Cors.builder().auth().preflight().allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS").add(Response.ok());
+    }
+
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response createOIDC(OIDCClientRepresentation clientOIDC) {
+        Cors cors = Cors.builder().auth().allowedMethods("POST").exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
+
         if (clientOIDC.getClientId() != null) {
             throw new ErrorResponseException(ErrorCodes.INVALID_CLIENT_METADATA, "Client Identifier included", Response.Status.BAD_REQUEST);
         }
@@ -94,7 +103,7 @@ public class OIDCClientRegistrationProvider extends AbstractClientRegistrationPr
             URI uri = getRegistrationClientUri(clientModel);
             clientOIDC = DescriptionConverter.toExternalResponse(session, client, uri);
             clientOIDC.setClientIdIssuedAt(Time.currentTime());
-            return Response.created(uri).entity(clientOIDC).build();
+            return cors.allowAllOrigins().add(Response.created(uri).entity(clientOIDC));
         } catch (ClientRegistrationException cre) {
             ServicesLogger.LOGGER.clientRegistrationException(cre.getMessage());
             throw new ErrorResponseException(ErrorCodes.INVALID_CLIENT_METADATA, "Client metadata invalid", Response.Status.BAD_REQUEST);
@@ -105,12 +114,14 @@ public class OIDCClientRegistrationProvider extends AbstractClientRegistrationPr
     @Path("{clientId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getOIDC(@PathParam("clientId") String clientId) {
+        Cors cors = Cors.builder().auth().allowedMethods("GET").exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
+
         ClientModel client = session.getContext().getRealm().getClientByClientId(clientId);
 
         ClientRepresentation clientRepresentation = get(client);
 
         OIDCClientRepresentation clientOIDC = DescriptionConverter.toExternalResponse(session, clientRepresentation, getRegistrationClientUri(client));
-        return Response.ok(clientOIDC).build();
+        return cors.allowAllOrigins().add(Response.ok(clientOIDC));
     }
 
     @PUT
@@ -119,6 +130,8 @@ public class OIDCClientRegistrationProvider extends AbstractClientRegistrationPr
     @Produces(MediaType.APPLICATION_JSON)
     public Response updateOIDC(@PathParam("clientId") String clientId, OIDCClientRepresentation clientOIDC) {
         try {
+            Cors cors = Cors.builder().auth().allowedMethods("PUT").exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
+
             ClientRepresentation client = DescriptionConverter.toInternal(session, clientOIDC);
 
             if (clientOIDC.getScope() != null) {
@@ -142,7 +155,7 @@ public class OIDCClientRegistrationProvider extends AbstractClientRegistrationPr
 
             URI uri = getRegistrationClientUri(clientModel);
             clientOIDC = DescriptionConverter.toExternalResponse(session, client, uri);
-            return Response.ok(clientOIDC).build();
+            return cors.allowAllOrigins().add(Response.ok(clientOIDC));
         } catch (ClientRegistrationException cre) {
             ServicesLogger.LOGGER.clientRegistrationException(cre.getMessage());
             throw new ErrorResponseException(ErrorCodes.INVALID_CLIENT_METADATA, "Client metadata invalid", Response.Status.BAD_REQUEST);
@@ -152,7 +165,9 @@ public class OIDCClientRegistrationProvider extends AbstractClientRegistrationPr
     @DELETE
     @Path("{clientId}")
     public void deleteOIDC(@PathParam("clientId") String clientId) {
+        Cors cors = Cors.builder().auth().allowedMethods("DELETE").exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
         delete(clientId);
+        cors.allowAllOrigins().add();
     }
 
     private void updatePairwiseSubMappers(ClientModel clientModel, SubjectType subjectType, String sectorIdentifierUri) {

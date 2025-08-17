@@ -51,7 +51,7 @@ public class ServerMetadataResource {
     @Path("/.well-known/oauth-authorization-server/realms/{realm}")
     @Produces(jakarta.ws.rs.core.MediaType.APPLICATION_JSON)
     public Response getOAuth2AuthorizationServerWellKnownVersionPreflight(final @PathParam("realm") String name) {
-        return Cors.builder().allowedMethods("GET").preflight().auth().add(Response.ok());
+        return Cors.builder().preflight().allowedMethods("GET", "OPTIONS").add(Response.ok());
     }
 
     @GET
@@ -67,6 +67,7 @@ public class ServerMetadataResource {
         if (wellKnown != null) {
             Response.ResponseBuilder responseBuilder = Response.ok(wellKnown.getConfig()).cacheControl(CacheControlUtil.noCache());
             return Cors.builder().allowAllOrigins().auth().add(responseBuilder);
+            //return Cors.builder().allowAllOrigins().allowedMethods("GET").exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS).auth().add(responseBuilder);
         }
 
         throw new NotFoundException();
