@@ -39,7 +39,7 @@ import org.keycloak.services.util.CacheControlUtil;
 import org.keycloak.wellknown.WellKnownProvider;
 
 @Provider
-@Path("/")
+@Path("/.well-known")
 public class ServerMetadataResource {
 
     protected static final Logger logger = Logger.getLogger(ServerMetadataResource.class);
@@ -48,14 +48,14 @@ public class ServerMetadataResource {
     protected KeycloakSession session;
 
     @OPTIONS
-    @Path("/.well-known/oauth-authorization-server/realms/{realm}")
+    @Path("oauth-authorization-server/realms/{realm}")
     @Produces(jakarta.ws.rs.core.MediaType.APPLICATION_JSON)
     public Response getOAuth2AuthorizationServerWellKnownVersionPreflight(final @PathParam("realm") String name) {
         return Cors.builder().preflight().allowedMethods("GET", "OPTIONS").add(Response.ok());
     }
 
     @GET
-    @Path("/.well-known/oauth-authorization-server/realms/{realm}")
+    @Path("oauth-authorization-server/realms/{realm}")
     @Produces(jakarta.ws.rs.core.MediaType.APPLICATION_JSON)
     public Response getOAuth2AuthorizationServerWellKnown(final @PathParam("realm") String name) {
         resolveRealmAndUpdateSession(name);
@@ -74,7 +74,8 @@ public class ServerMetadataResource {
     }
 
     public static UriBuilder wellKnownProviderUrl(UriBuilder builder) {
-        return builder.path(ServerMetadataResource.class, "getOAuth2AuthorizationServerWellKnown");
+        return builder.path(ServerMetadataResource.class).path("oauth-authorization-server/realms/{realm}");
+        //return builder.path(ServerMetadataResource.class, "getOAuth2AuthorizationServerWellKnown");
     }
 
     private void resolveRealmAndUpdateSession(String realmName) {
