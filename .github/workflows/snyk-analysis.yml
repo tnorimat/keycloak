@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'keycloak/keycloak'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Keycloak
         uses: ./.github/actions/build-keycloak
