@@ -199,6 +199,9 @@ public class OIDCConfigurationRepresentation {
     @JsonProperty("authorization_response_iss_parameter_supported")
     private Boolean authorizationResponseIssParameterSupported;
 
+    @JsonProperty("client_id_metadata_document_supported")
+    private Boolean clientIdMetadataDocumentSupported;
+
     protected Map<String, Object> otherClaims = new HashMap<String, Object>();
 
     public String getIssuer() {
@@ -645,6 +648,14 @@ public class OIDCConfigurationRepresentation {
 
     public void setAuthorizationResponseIssParameterSupported(Boolean authorizationResponseIssParameterSupported) {
         this.authorizationResponseIssParameterSupported = authorizationResponseIssParameterSupported;
+    }
+
+    public Boolean getClientIdMetadataDocumentSupported() {
+        return clientIdMetadataDocumentSupported;
+    }
+
+    public void setClientIdMetadataDocumentSupported(Boolean clientIdMetadataDocumentSupported) {
+        this.clientIdMetadataDocumentSupported = clientIdMetadataDocumentSupported;
     }
 
 }

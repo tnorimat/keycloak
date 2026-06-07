@@ -224,6 +224,11 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
 
         config.setAuthorizationResponseIssParameterSupported(true);
 
+        // HAIP-1.0 does not want to see this property (don't set to false)
+        if (Profile.isFeatureEnabled(Profile.Feature.CIMD)) {
+            config.setClientIdMetadataDocumentSupported(true);
+        }
+
         config = checkConfigOverride(config);
         return config;
     }
@@ -237,11 +242,15 @@ public class OIDCWellKnownProvider implements WellKnownProvider {
     }
 
     private List<String> getClientAuthMethodsSupported() {
-        return session.getKeycloakSessionFactory().getProviderFactoriesStream(ClientAuthenticator.class)
+        List<String> clientAuthMethods = session.getKeycloakSessionFactory().getProviderFactoriesStream(ClientAuthenticator.class)
                 .map(ClientAuthenticatorFactory.class::cast)
                 .map(caf -> caf.getProtocolAuthenticatorMethods(OIDCLoginProtocol.LOGIN_PROTOCOL))
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
+        if (Profile.isFeatureEnabled(Profile.Feature.CIMD)) {
+            clientAuthMethods.add("none");
+        }
+        return clientAuthMethods;
     }
 
     private List<String> getSupportedAlgorithms(Class<? extends Provider> clazz, boolean includeNone) {
