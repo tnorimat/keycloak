@@ -1182,6 +1182,12 @@ public class AuthenticationManager {
                 continue;
             }
 
+            // Skip the client itself - it's included in the authorization details for token mapping purposes
+            // but should not appear as a scope entry on the consent screen (e.g. the client hostname in CIMD)
+            if (clientScope instanceof ClientModel) {
+                continue;
+            }
+
             // we need to add dynamic scopes with params to the scopes to consent every time for now
             if (grantedConsent == null || !grantedConsent.isClientScopeGranted(clientScope) || isDynamicScopeWithParam(authDetails)) {
                 clientScopesToDisplay.add(authDetails);
