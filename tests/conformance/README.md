@@ -25,6 +25,7 @@ single reusable fork, so all suites run in the same JVM.
 | `Oid4VciNonHaipTestSuite` | `vci.nonhaip` | OID4VCI issuer, **non-HAIP** (`oid4vci-1_0-issuer-test-plan`, `fapi_profile=vci`) | `private_key_jwt` + DPoP |
 | `Oid4VpTestSuite` | `vp` | OID4VP verifier (`oid4vp-1final-verifier-test-plan`) | wallet mock; plain and encrypted (`direct_post.jwt`) response modes |
 | `OidcTestSuite` | `oidc` | OpenID provider, **OpenID Connect Core** Config, Basic, Implicit and Hybrid certification plans | `client_secret_basic` / `client_secret_post`, static clients, discovery |
+| `OidcLogoutTestSuite` | `oidclogout` | OpenID provider, **OpenID Connect logout**: RP-Initiated, Front-Channel and Back-Channel Logout and Session Management certification plans | `client_secret_basic`, static clients, discovery |
 
 The suite/profile split is intentional: HAIP requires attestation-based client authentication, whereas the
 conformance suite's issuer modules do not permit public or `client_secret` authentication, so the non-HAIP profile
@@ -35,6 +36,11 @@ Each specification has its own package. Infrastructure the packages share, i.e. 
 the suite API client and the scripted browser interactions, lives in the test framework's `conformance-runner`
 module, and the OpenID provider tests share one Keycloak server configuration (`ConformanceServerConfig`).
 
+For back-channel logout, Keycloak itself calls the suite. The suite publishes this endpoint on its
+container-internal host, which Keycloak, running on the Docker host, cannot resolve, so the clients register it at
+the suite's address on the Docker host, and the test server trusts the suite's self-signed TLS certificate without
+hostname verification.
+
 Modules are grouped by the browser interaction and the result they are expected to finish with. Besides `PASSED`,
 a module may be expected to finish with `REVIEW` (Keycloak's error page or a second login is snapshotted for a
 human reviewer), `SKIPPED` or `WARNING`; the reasons are documented next to the module lists.
@@ -43,8 +49,14 @@ Keycloak always adds the `typ` claim to the ID token, and puts the claims of a r
 even when an access token is issued for the userinfo endpoint. The suite warns about both, and no realm setting
 changes them, so this module packages a script based protocol mapper (`src/main/resources`, with the `scripts`
 feature enabled by `ConformanceServerConfig`) that the OpenID Connect clients use: `oidc-id-token-claims.js` removes
-`typ` and, unless the response type is `id_token`, the email claims. The OpenID Connect tests also disable the CSS
-processing of the suite's browser (`browsercontrol_css_enable`), where most of their time used to go.
+`typ` and, unless the response type is `id_token`, the email claims. As Keycloak rejects an `id_token_hint` without
+`typ`, the OpenID Connect logout realms do not use it. The OpenID Connect tests also disable the CSS processing of the
+suite's browser (`browsercontrol_css_enable`), where most of their time used to go.
+
+Known gaps, mostly of Keycloak:
+
+- The session check of the Session Management plan does not complete, as Keycloak's `check_session_iframe` does not
+  answer in the suite's HtmlUnit browser, so that module is disabled (`OidcSessionManagementRpInitiatedLogoutTest`).
 
 ## Prerequisites
 
@@ -65,6 +77,7 @@ Run one suite (mirrors how CI runs them, one matrix job each):
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VciHaipTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VpTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcTestSuite
+./mvnw package -f tests/conformance/pom.xml -Dtest=OidcLogoutTestSuite
 ```
 
 Run all suites together in one invocation (all suites share a single Surefire reusable fork, i.e. the same

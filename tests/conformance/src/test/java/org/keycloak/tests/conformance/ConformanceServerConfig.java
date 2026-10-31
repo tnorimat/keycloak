@@ -17,6 +17,14 @@
 
 package org.keycloak.tests.conformance;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.keycloak.common.Profile;
 import org.keycloak.testframework.conformance.ConformanceTls;
 import org.keycloak.testframework.conformance.OpenIdConformanceServer;
@@ -24,13 +32,23 @@ import org.keycloak.testframework.server.KeycloakServerConfig;
 import org.keycloak.testframework.server.KeycloakServerConfigBuilder;
 
 /**
- * Keycloak server configuration for the OpenID Connect conformance tests, meant to be shared with the other OpenID
- * provider conformance tests so the server is not restarted between them. It applies the BCP195 TLS restriction FAPI
- * requires, which does not affect the OpenID Connect plans, and deploys the script based protocol mappers of this module
- * (src/main/resources), which keep the ID tokens of the conformance realms free of claims the suite warns about, e.g.
- * Keycloak's typ claim.
+ * Keycloak server configuration for the OpenID provider conformance tests (OpenID Connect, OpenID Connect logout).
+ * They share it so the server is not restarted between them; the settings one plan needs do not affect the others:
+ * <ul>
+ * <li>the BCP195 TLS restriction FAPI requires</li>
+ * <li>trust in the suite's TLS certificate for the requests Keycloak sends to the suite, e.g. back-channel logout.
+ * Keycloak reaches the suite on the Docker host, whose name the self-signed certificate does not cover, hence no
+ * hostname verification. This is acceptable for a test server only.</li>
+ * <li>the script based protocol mappers of this module (src/main/resources), which keep the ID tokens of the
+ * conformance realms free of claims the suite warns about, e.g. Keycloak's typ claim</li>
+ * </ul>
+ * Subclasses can trust additional certificates, e.g. the CAs of TLS client certificates.
  */
 public class ConformanceServerConfig implements KeycloakServerConfig {
+
+    // Written once per configuration, as a different path on every configuration would restart the server for every
+    // test class
+    private static final Map<Class<?>, Path> TRUSTSTORES = new ConcurrentHashMap<>();
 
     @Override
     public KeycloakServerConfigBuilder configure(KeycloakServerConfigBuilder config) {
@@ -38,6 +56,30 @@ public class ConformanceServerConfig implements KeycloakServerConfig {
                 .dependencyCurrentProject()
                 .option("https-protocols", ConformanceTls.PROTOCOLS)
                 .option("https-cipher-suites", ConformanceTls.BCP195_CIPHERS)
-                .option("hostname", OpenIdConformanceServer.KEYCLOAK_BASE_URI.toString());
+                .option("hostname", OpenIdConformanceServer.KEYCLOAK_BASE_URI.toString())
+                .option("truststore-paths", truststore().toString())
+                .option("tls-hostname-verifier", "ANY");
+    }
+
+    /**
+     * PEM encoded certificates the server trusts in addition to the suite's TLS certificate.
+     */
+    protected List<String> additionalTrustedCertificates() {
+        return List.of();
+    }
+
+    private Path truststore() {
+        return TRUSTSTORES.computeIfAbsent(getClass(), configClass -> {
+            List<String> certificates = new ArrayList<>(additionalTrustedCertificates());
+            certificates.add(OpenIdConformanceServer.instance().certificatePem());
+            try {
+                Path path = Files.createTempFile("keycloak-conformance-truststore", ".pem");
+                path.toFile().deleteOnExit();
+                Files.writeString(path, String.join("\n", certificates) + "\n");
+                return path;
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write the conformance truststore", e);
+            }
+        });
     }
 }

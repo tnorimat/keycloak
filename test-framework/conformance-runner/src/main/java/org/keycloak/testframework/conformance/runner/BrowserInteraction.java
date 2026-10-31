@@ -17,6 +17,7 @@
 
 package org.keycloak.testframework.conformance.runner;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.keycloak.testframework.conformance.runner.BrowserFlow.BrowserTask;
@@ -29,6 +30,10 @@ public interface BrowserInteraction {
     BrowserInteraction LOGIN_ON_SECOND_VISIT = new LoginOnSecondVisit();
     BrowserInteraction ERROR_CALLBACK = new ErrorCallback();
     BrowserInteraction LOGIN_WITH_SCREENSHOT_ON_SECOND_LOGIN = new LoginWithScreenshotOnSecondLogin();
+    BrowserInteraction LOGOUT = new Logout();
+    BrowserInteraction LOGOUT_PAGE_SCREENSHOT = new LogoutPageScreenshot();
+    BrowserInteraction CONFIRM_LOGOUT_WITH_SCREENSHOT = new ConfirmLogoutWithScreenshot();
+    BrowserInteraction SESSION_MANAGEMENT_LOGOUT = new SessionManagementLogout();
 
     /**
      * Asserts Keycloak renders its error page with a message matching {@code messageRegexp} at the authorization
@@ -59,6 +64,30 @@ public interface BrowserInteraction {
         String loginPage() {
             return "https://*/realms/" + realm + "/*";
         }
+
+        String endSessionEndpoint() {
+            return "https://*/realms/" + realm + "/protocol/openid-connect/logout*";
+        }
+
+        // The suite's post_logout_redirect_uri, which replaces callback in the redirect_uri
+        String postLogoutRedirectUri() {
+            return callbackUrl.replaceFirst("/callback$", "/post_logout_redirect");
+        }
+    }
+
+    /**
+     * The login flows of {@link Login} followed by the given logout flow. The first authorization requires a login,
+     * later ones (e.g. the prompt=none request after a logout) may skip it.
+     */
+    private static List<BrowserFlow> withLoginFlows(BrowserContext context, BrowserFlow logoutFlow) {
+        List<BrowserFlow> flows = new ArrayList<>(LOGIN.browserFlows(context));
+        flows.add(logoutFlow);
+        return flows;
+    }
+
+    // command, element selector type, element selector, timeout in seconds, element text regexp, action
+    private static List<Object> screenshotCommand(String elementId) {
+        return List.of(BrowserTask.WAIT, "id", elementId, 10, ".*", BrowserTask.UPDATE_IMAGE_PLACEHOLDER);
     }
 
     private static BrowserTask loginTask(BrowserContext context, boolean optional) {
@@ -206,6 +235,89 @@ public interface BrowserInteraction {
                                     List.of(BrowserTask.CLICK, "id", "kc-login"))),
                     verifyCompleteTask(context)));
             return List.of(firstVisit, secondVisit);
+        }
+    }
+
+    /**
+     * Logs in, then follows the RP-initiated logout at the end_session_endpoint back to the post_logout_redirect_uri.
+     * Keycloak redirects straight away, except with front-channel logout, where its logout page first loads the
+     * clients' frontchannel_logout_uri in iframes and then redirects by script. The task waiting on that page is
+     * optional, so it is skipped when Keycloak redirects straight away.
+     */
+    record Logout() implements BrowserInteraction {
+
+        @Override
+        public List<BrowserFlow> browserFlows(BrowserContext context) {
+            return withLoginFlows(context, new BrowserFlow(context.endSessionEndpoint(), List.of(
+                    new BrowserTask(
+                            "Wait for Front-Channel Logout",
+                            context.endSessionEndpoint(),
+                            true,
+                            // the wait keeps polling across the scripted redirect to the post_logout_redirect_uri
+                            List.of(List.of(BrowserTask.WAIT, "id", "complete", 30))),
+                    new BrowserTask(
+                            "Verify Post Logout Redirect",
+                            context.postLogoutRedirectUri() + "*",
+                            List.of(List.of(BrowserTask.WAIT, "id", "complete", 10))))));
+        }
+    }
+
+    /**
+     * Like {@link Logout}, and additionally loads the suite's session check pages before and after the logout. The
+     * suite only drives its browser to URLs a flow matches, so without this flow the checks never run. Each page
+     * compares the session state through Keycloak's check_session_iframe, then sends the browser to the suite's
+     * result page; the wait keeps polling across that scripted navigation.
+     */
+    record SessionManagementLogout() implements BrowserInteraction {
+
+        @Override
+        public List<BrowserFlow> browserFlows(BrowserContext context) {
+            // matches both session_verify (before the logout) and second_session_verify (after it)
+            String sessionVerifyPage = context.callbackUrl().replaceFirst("/callback$", "/*session_verify*");
+            List<BrowserFlow> flows = new ArrayList<>(LOGOUT.browserFlows(context));
+            flows.add(new BrowserFlow(sessionVerifyPage, List.of(
+                    new BrowserTask(
+                            "Verify Session State",
+                            sessionVerifyPage,
+                            List.of(List.of(BrowserTask.WAIT, "id", "complete", 30))))));
+            return flows;
+        }
+    }
+
+    /**
+     * Logs in, then snapshots the page Keycloak renders at the end_session_endpoint, i.e. its error page or its logout
+     * confirmation, for the modules that require the OP to not redirect back.
+     */
+    record LogoutPageScreenshot() implements BrowserInteraction {
+
+        @Override
+        public List<BrowserFlow> browserFlows(BrowserContext context) {
+            return withLoginFlows(context, new BrowserFlow(context.endSessionEndpoint(), List.of(
+                    new BrowserTask(
+                            "Keycloak Logout Page",
+                            context.endSessionEndpoint(),
+                            List.of(screenshotCommand("kc-page-title"))))));
+        }
+    }
+
+    /**
+     * Logs in, then confirms the logout if Keycloak asks for it (without an id_token_hint) and snapshots Keycloak's
+     * "you are logged out" page, for the modules without a post_logout_redirect_uri.
+     */
+    record ConfirmLogoutWithScreenshot() implements BrowserInteraction {
+
+        @Override
+        public List<BrowserFlow> browserFlows(BrowserContext context) {
+            return withLoginFlows(context, new BrowserFlow(context.endSessionEndpoint(), List.of(
+                    new BrowserTask(
+                            "Confirm Logout",
+                            context.endSessionEndpoint(),
+                            // command, element selector type, element selector, skip when the element is missing
+                            List.of(List.of(BrowserTask.CLICK, "id", "kc-logout", "optional"))),
+                    new BrowserTask(
+                            "Keycloak Logged Out Page",
+                            context.endSessionEndpoint(),
+                            List.of(screenshotCommand("kc-info-message"))))));
         }
     }
 

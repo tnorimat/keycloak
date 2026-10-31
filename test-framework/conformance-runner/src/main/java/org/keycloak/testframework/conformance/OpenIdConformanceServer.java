@@ -18,10 +18,13 @@
 package org.keycloak.testframework.conformance;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -151,7 +154,20 @@ public final class OpenIdConformanceServer implements AutoCloseable {
         return nginxCertificate;
     }
 
-    // Rewrites a suite internal URI to one reachable from the test JVM.
+    // The suite's nginx TLS certificate PEM encoded, e.g. for a truststore of Keycloak, as Keycloak calls the suite
+    // itself for some flows, e.g. back-channel logout.
+    public String certificatePem() {
+        try {
+            return "-----BEGIN CERTIFICATE-----\n"
+                    + Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII)).encodeToString(nginxCertificate.getEncoded())
+                    + "\n-----END CERTIFICATE-----";
+        } catch (CertificateEncodingException e) {
+            throw new RuntimeException("Failed to encode the conformance suite TLS certificate", e);
+        }
+    }
+
+    // Rewrites a suite internal URI to one reachable from the test JVM, and from Keycloak, which runs on the Docker host
+    // as well, e.g. for the endpoints Keycloak calls itself such as the back-channel logout endpoint.
     public URI externalUri(URI internalUri) {
         if (!INTERNAL_BASE_URI.getHost().equals(internalUri.getHost())) {
             return internalUri;
