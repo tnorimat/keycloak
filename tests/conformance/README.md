@@ -26,6 +26,7 @@ single reusable fork, so all suites run in the same JVM.
 | `Oid4VpTestSuite` | `vp` | OID4VP verifier (`oid4vp-1final-verifier-test-plan`) | wallet mock; plain and encrypted (`direct_post.jwt`) response modes |
 | `Fapi2SecurityProfileTestSuite` | `fapi2` | OpenID provider, **FAPI 2.0 Security Profile** (`fapi2-security-profile-final-test-plan`, `plain_fapi`, `openid_connect`) | `private_key_jwt` + DPoP, PAR |
 | `Fapi2MessageSigningTestSuite` | `fapi2sign` | OpenID provider, **FAPI 2.0 Message Signing** (`fapi2-message-signing-final-test-plan`, signed request objects, plain responses) | `private_key_jwt` + DPoP, PAR + JAR |
+| `FapiCibaTestSuite` | `fapiciba` | OpenID provider, **FAPI-CIBA** (`fapi-ciba-id1-test-plan`, `plain_fapi`, poll and ping modes) | `private_key_jwt`, signed authentication requests, mTLS certificate bound tokens |
 | `OidcTestSuite` | `oidc` | OpenID provider, **OpenID Connect Core** Config, Basic, Implicit and Hybrid certification plans | `client_secret_basic` / `client_secret_post`, static clients, discovery |
 | `OidcLogoutTestSuite` | `oidclogout` | OpenID provider, **OpenID Connect logout**: RP-Initiated, Front-Channel and Back-Channel Logout and Session Management certification plans | `client_secret_basic`, static clients, discovery |
 
@@ -34,17 +35,30 @@ conformance suite's issuer modules do not permit public or `client_secret` authe
 uses `private_key_jwt`. Shared realm building blocks live in `vci/VciConformanceRealmUtil`; each profile's realm and
 server configuration lives in `vci/haip` and `vci/nonhaip` respectively.
 
-The FAPI realms enforce Keycloak's built-in `fapi-2-dpop-security-profile` and `fapi-2-dpop-message-signing` client
-profiles on every client; the suite uses Keycloak's userinfo endpoint as the FAPI resource endpoint.
+The FAPI 2.0 realms enforce Keycloak's built-in `fapi-2-dpop-security-profile` and `fapi-2-dpop-message-signing`
+client profiles on every client, and the FAPI-CIBA realm the `fapi-1-advanced` and `fapi-ciba` profiles; the suite
+uses Keycloak's userinfo endpoint as the FAPI resource endpoint.
 
 Each specification has its own package. Infrastructure the packages share, i.e. the conformance suite containers,
 the suite API client and the scripted browser interactions, lives in the test framework's `conformance-runner`
 module, and the OpenID provider tests share one Keycloak server configuration (`ConformanceServerConfig`).
+FAPI-CIBA extends it (`fapiciba/FapiCibaServerConfig`) with TLS client authentication and the CIBA authentication
+channel.
 
-For back-channel logout, Keycloak itself calls the suite. The suite publishes this endpoint on its
-container-internal host, which Keycloak, running on the Docker host, cannot resolve, so the clients register it at
-the suite's address on the Docker host, and the test server trusts the suite's self-signed TLS certificate without
-hostname verification.
+FAPI-CIBA needs an authentication device: `CibaAuthenticationDevice` of the `conformance-runner` module is a small
+HTTP server in the test JVM that receives Keycloak's CIBA authentication requests and completes them when the
+suite calls its `automated_ciba_approval_url`. The CIBA clients present TLS client certificates generated at
+runtime, which the server trusts for its certificate bound access tokens.
+
+For CIBA ping notifications and back-channel logout, Keycloak itself calls the suite. The suite publishes these
+endpoints on its container-internal host, which Keycloak, running on the Docker host, cannot resolve, so the clients
+register them at the suite's address on the Docker host, and the test server trusts the suite's self-signed TLS
+certificate without hostname verification.
+
+In the CIBA ping mode, the suite polls the token endpoint just before it approves an authentication request and
+requests the tokens as soon as the ping notification arrives. The authentication device therefore completes such a
+request only some seconds after the approval, longer than Keycloak's polling interval, as Keycloak otherwise answers
+that token request with `slow_down`.
 
 Modules are grouped by the browser interaction and the result they are expected to finish with. Besides `PASSED`,
 a module may be expected to finish with `REVIEW` (Keycloak's error page or a second login is snapshotted for a
@@ -70,6 +84,13 @@ Known gaps, mostly of Keycloak:
   the missing header.
 - With FAPI 2.0 Message Signing, a PAR `request_uri` presented by a different client causes an internal server
   error, so that module is disabled (`Fapi2MessageSigningRequestUriForDifferentClientTest`).
+- FAPI-CIBA also fails on the `x-fapi-interaction-id` header FAPI 1.0 requires of resource servers, handled like the
+  `Date` header (see `AbstractFapiCibaConformanceTest`), which the optional reverse proxy adds as well.
+
+Some modules wait exactly as long as a lifetime Keycloak announced, e.g. of a PAR `request_uri` or of a CIBA
+`auth_req_id`, and then expect it to be expired. A backward correction of the system clock during the wait, as seen on
+WSL hosts, makes them fail intermittently, as do the `oidcc-refresh-token` and `fapi2-security-profile-final-refresh-token`
+modules when the refreshed ID token is issued within the same second as the first one (identical `iat`).
 
 ## Prerequisites
 
@@ -91,6 +112,7 @@ Run one suite (mirrors how CI runs them, one matrix job each):
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VpTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Fapi2SecurityProfileTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Fapi2MessageSigningTestSuite
+./mvnw package -f tests/conformance/pom.xml -Dtest=FapiCibaTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcLogoutTestSuite
 ```
@@ -123,7 +145,7 @@ property, the `KC_TEST_CONFORMANCE_PROXY` environment variable or in `keycloak-t
 
 The proxy, an nginx container on the suite's network, forwards every request to Keycloak, which still processes it,
 and adds the two headers. The suite then reaches Keycloak at `https://keycloak-proxy:8443`, which the tests set as the
-Keycloak `hostname`.
+Keycloak `hostname`, and Keycloak reads the TLS client certificate of FAPI-CIBA from the header the proxy forwards.
 The modules expected to fail only because of the missing headers are then expected to pass; those failing on
 Keycloak's own behaviour, e.g. accepting DPoP proofs signed with RS256, still fail. The proxy is disabled by default,
 so the tests exercise Keycloak as is; the OID4VCI and OID4VP tests do not use it.

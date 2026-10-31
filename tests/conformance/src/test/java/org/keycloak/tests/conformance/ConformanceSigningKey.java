@@ -32,6 +32,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.spec.ECGenParameterSpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -156,6 +157,16 @@ public final class ConformanceSigningKey {
 
     public String caCertificatePem() {
         return PemUtils.addCertificateBeginEnd(PemUtils.encodeCertificate(caCertificate));
+    }
+
+    // The leaf certificate and its PKCS#8 private key, e.g. for a TLS client certificate
+    public String certificatePem() {
+        return PemUtils.addCertificateBeginEnd(PemUtils.encodeCertificate(certificate));
+    }
+
+    // The standard PKCS#8 encoding, as PemUtils.encodeKey drops the curve parameters of EC keys
+    public String privateKeyPem() {
+        return PemUtils.addPrivateKeyBeginEnd(Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded()));
     }
 
     public String x509Hash() {
