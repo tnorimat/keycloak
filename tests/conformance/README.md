@@ -25,6 +25,7 @@ single reusable fork, so all suites run in the same JVM.
 | `Oid4VciNonHaipTestSuite` | `vci.nonhaip` | OID4VCI issuer, **non-HAIP** (`oid4vci-1_0-issuer-test-plan`, `fapi_profile=vci`) | `private_key_jwt` + DPoP |
 | `Oid4VpTestSuite` | `vp` | OID4VP verifier (`oid4vp-1final-verifier-test-plan`) | wallet mock; plain and encrypted (`direct_post.jwt`) response modes |
 | `Fapi2SecurityProfileTestSuite` | `fapi2` | OpenID provider, **FAPI 2.0 Security Profile** (`fapi2-security-profile-final-test-plan`, `plain_fapi`, `openid_connect`) | `private_key_jwt` + DPoP, PAR |
+| `Fapi2MessageSigningTestSuite` | `fapi2sign` | OpenID provider, **FAPI 2.0 Message Signing** (`fapi2-message-signing-final-test-plan`, signed request objects, plain responses) | `private_key_jwt` + DPoP, PAR + JAR |
 | `OidcTestSuite` | `oidc` | OpenID provider, **OpenID Connect Core** Config, Basic, Implicit and Hybrid certification plans | `client_secret_basic` / `client_secret_post`, static clients, discovery |
 | `OidcLogoutTestSuite` | `oidclogout` | OpenID provider, **OpenID Connect logout**: RP-Initiated, Front-Channel and Back-Channel Logout and Session Management certification plans | `client_secret_basic`, static clients, discovery |
 
@@ -33,8 +34,8 @@ conformance suite's issuer modules do not permit public or `client_secret` authe
 uses `private_key_jwt`. Shared realm building blocks live in `vci/VciConformanceRealmUtil`; each profile's realm and
 server configuration lives in `vci/haip` and `vci/nonhaip` respectively.
 
-The FAPI realm enforces Keycloak's built-in `fapi-2-dpop-security-profile` client profile on every client; the
-suite uses Keycloak's userinfo endpoint as the FAPI resource endpoint.
+The FAPI realms enforce Keycloak's built-in `fapi-2-dpop-security-profile` and `fapi-2-dpop-message-signing` client
+profiles on every client; the suite uses Keycloak's userinfo endpoint as the FAPI resource endpoint.
 
 Each specification has its own package. Infrastructure the packages share, i.e. the conformance suite containers,
 the suite API client and the scripted browser interactions, lives in the test framework's `conformance-runner`
@@ -67,6 +68,8 @@ Known gaps, mostly of Keycloak:
   expected to finish with `FAILED`, but only on these known conditions (see `AbstractFapi2ConformanceTest`), so any
   other failure still fails the test. The optional reverse proxy (see [Running the tests](#running-the-tests)) adds
   the missing header.
+- With FAPI 2.0 Message Signing, a PAR `request_uri` presented by a different client causes an internal server
+  error, so that module is disabled (`Fapi2MessageSigningRequestUriForDifferentClientTest`).
 
 ## Prerequisites
 
@@ -87,6 +90,7 @@ Run one suite (mirrors how CI runs them, one matrix job each):
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VciHaipTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VpTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Fapi2SecurityProfileTestSuite
+./mvnw package -f tests/conformance/pom.xml -Dtest=Fapi2MessageSigningTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcLogoutTestSuite
 ```
