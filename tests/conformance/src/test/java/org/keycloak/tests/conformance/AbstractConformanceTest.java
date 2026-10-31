@@ -107,7 +107,8 @@ public abstract class AbstractConformanceTest {
         ConformanceModuleResult result = server.client()
                 .run(moduleVariant, suiteConfig(moduleVariant), interaction(moduleVariant));
         if (!result.finishedWith(moduleVariant.expectedResult())) {
-            LOGGER.errorf("Full logs of failed conformance module %s:%n%s", result.module(), result.logs().toPrettyString());
+            // Formatted upfront, as the test framework log filter replays buffered records without their parameters
+            LOGGER.error("Full logs of failed conformance module " + result.module() + ":\n" + result.logs().toPrettyString());
             Assertions.fail(result.failureSummary());
         }
     }
