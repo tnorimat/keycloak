@@ -18,19 +18,72 @@
 package org.keycloak.tests.conformance;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.json.RawJsonValue;
+import org.keycloak.keys.Attributes;
+import org.keycloak.keys.GeneratedEcdsaKeyProviderFactory;
+import org.keycloak.keys.KeyProvider;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.mappers.ClaimsParameterTokenMapper;
 import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
+import org.keycloak.representations.idm.ClientPolicyConditionRepresentation;
+import org.keycloak.representations.idm.ClientPolicyRepresentation;
+import org.keycloak.representations.idm.ComponentExportRepresentation;
 import org.keycloak.representations.idm.ProtocolMapperRepresentation;
+import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.services.clientpolicy.condition.AnyClientConditionFactory;
+
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 /**
- * Realm building blocks shared by the conformance tests of several specifications.
+ * Realm building blocks shared by the conformance tests of several specifications, e.g. the FAPI ones.
  */
 public final class ConformanceRealmUtil {
 
     private ConformanceRealmUtil() {
+    }
+
+    /**
+     * A client policy enforcing the given client profiles, e.g. Keycloak's built-in FAPI profiles, on every client.
+     */
+    public static ClientPolicyRepresentation clientPolicy(String... clientProfiles) {
+        ClientPolicyConditionRepresentation condition = new ClientPolicyConditionRepresentation();
+        condition.setConditionProviderId(AnyClientConditionFactory.PROVIDER_ID);
+        condition.setConfiguration(RawJsonValue.of(JsonNodeFactory.instance.objectNode()));
+
+        ClientPolicyRepresentation policy = new ClientPolicyRepresentation();
+        policy.setName("conformance-policy");
+        policy.setDescription("Enforces " + String.join(", ", clientProfiles) + " on every client");
+        policy.setEnabled(true);
+        policy.setConditions(List.of(condition));
+        policy.setProfiles(List.of(clientProfiles));
+        return policy;
+    }
+
+    /**
+     * Adds a generated ES256 signing key to the realm. FAPI only permits PS256, ES256 and EdDSA, so the FAPI realms sign
+     * with it.
+     */
+    public static void applyEs256SigningKey(RealmRepresentation rep) {
+        MultivaluedHashMap<String, ComponentExportRepresentation> components = rep.getComponents();
+        if (components == null) {
+            components = new MultivaluedHashMap<>();
+            rep.setComponents(components);
+        }
+        ComponentExportRepresentation keyProvider = new ComponentExportRepresentation();
+        keyProvider.setName("conformance-es256-key");
+        keyProvider.setId(UUID.randomUUID().toString());
+        keyProvider.setProviderId(GeneratedEcdsaKeyProviderFactory.ID);
+        keyProvider.setConfig(new MultivaluedHashMap<>(Map.of(
+                Attributes.PRIORITY_KEY, List.of("100"),
+                Attributes.ENABLED_KEY, List.of("true"),
+                Attributes.ACTIVE_KEY, List.of("true"),
+                GeneratedEcdsaKeyProviderFactory.ECDSA_ELLIPTIC_CURVE_KEY, List.of("P-256"))));
+        components.add(KeyProvider.class.getName(), keyProvider);
     }
 
     /**

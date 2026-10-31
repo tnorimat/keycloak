@@ -19,6 +19,7 @@ package org.keycloak.tests.conformance;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -101,15 +102,42 @@ public abstract class AbstractConformanceTest {
         return null;
     }
 
+    /**
+     * The only suite conditions a module expected to finish FAILED may fail on, so that a known Keycloak gap does not
+     * mask other failures of the module. A module is expected to finish FAILED only because of such known gaps, so
+     * without any, e.g. as the test setup works around them, the module is expected to finish with
+     * {@link #resultWithoutKnownFailures}.
+     */
+    protected Set<String> knownFailures(ConformanceModuleVariant moduleVariant) {
+        return Set.of();
+    }
+
+    /**
+     * The result a module expected to finish FAILED finishes with when it has no {@link #knownFailures}, usually
+     * PASSED. A failure can hide what the module finishes with otherwise, e.g. a WARNING or a REVIEW.
+     */
+    protected ConformanceResult resultWithoutKnownFailures(ConformanceModuleVariant moduleVariant) {
+        return ConformanceResult.PASSED;
+    }
+
     @ParameterizedTest
     @MethodSource("moduleVariants")
     public void conformance(ConformanceModuleVariant moduleVariant) {
         ConformanceModuleResult result = server.client()
                 .run(moduleVariant, suiteConfig(moduleVariant), interaction(moduleVariant));
-        if (!result.finishedWith(moduleVariant.expectedResult())) {
+        ConformanceResult expectedResult = moduleVariant.expectedResult();
+        Set<String> knownFailures = expectedResult == ConformanceResult.FAILED ? knownFailures(moduleVariant) : Set.of();
+        if (expectedResult == ConformanceResult.FAILED && knownFailures.isEmpty()) {
+            expectedResult = resultWithoutKnownFailures(moduleVariant);
+        }
+        boolean unknownFailures = expectedResult == ConformanceResult.FAILED
+                && !knownFailures.containsAll(result.failedConditions());
+        if (!result.finishedWith(expectedResult) || unknownFailures) {
             // Formatted upfront, as the test framework log filter replays buffered records without their parameters
             LOGGER.error("Full logs of failed conformance module " + result.module() + ":\n" + result.logs().toPrettyString());
-            Assertions.fail(result.failureSummary());
+            Assertions.fail(result.failureSummary()
+                    + (unknownFailures ? "\n  failed conditions " + result.failedConditions()
+                            + " beyond the known failures " + knownFailures : ""));
         }
     }
 

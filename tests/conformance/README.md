@@ -1,7 +1,7 @@
 # Keycloak OpenID conformance tests
 
 This module runs Keycloak against the official [OpenID Foundation conformance suite](https://gitlab.com/openid/conformance-suite)
-to verify that Keycloak's OpenID for Verifiable Credentials and OpenID Connect implementations conform to the
+to verify that Keycloak's OpenID for Verifiable Credentials, FAPI and OpenID Connect implementations conform to the
 specifications. Each test drives a real conformance suite test module (plan creation, module execution and result
 assertion) against a live Keycloak server, so a passing run is evidence of spec conformance, not just internal
 correctness.
@@ -24,6 +24,7 @@ single reusable fork, so all suites run in the same JVM.
 | `Oid4VciHaipTestSuite` | `vci.haip` | OID4VCI issuer, **HAIP** (`oid4vci-1_0-issuer-haip-test-plan`) | client attestation + DPoP; includes the FAPI2 and mDoc modules |
 | `Oid4VciNonHaipTestSuite` | `vci.nonhaip` | OID4VCI issuer, **non-HAIP** (`oid4vci-1_0-issuer-test-plan`, `fapi_profile=vci`) | `private_key_jwt` + DPoP |
 | `Oid4VpTestSuite` | `vp` | OID4VP verifier (`oid4vp-1final-verifier-test-plan`) | wallet mock; plain and encrypted (`direct_post.jwt`) response modes |
+| `Fapi2SecurityProfileTestSuite` | `fapi2` | OpenID provider, **FAPI 2.0 Security Profile** (`fapi2-security-profile-final-test-plan`, `plain_fapi`, `openid_connect`) | `private_key_jwt` + DPoP, PAR |
 | `OidcTestSuite` | `oidc` | OpenID provider, **OpenID Connect Core** Config, Basic, Implicit and Hybrid certification plans | `client_secret_basic` / `client_secret_post`, static clients, discovery |
 | `OidcLogoutTestSuite` | `oidclogout` | OpenID provider, **OpenID Connect logout**: RP-Initiated, Front-Channel and Back-Channel Logout and Session Management certification plans | `client_secret_basic`, static clients, discovery |
 
@@ -31,6 +32,9 @@ The suite/profile split is intentional: HAIP requires attestation-based client a
 conformance suite's issuer modules do not permit public or `client_secret` authentication, so the non-HAIP profile
 uses `private_key_jwt`. Shared realm building blocks live in `vci/VciConformanceRealmUtil`; each profile's realm and
 server configuration lives in `vci/haip` and `vci/nonhaip` respectively.
+
+The FAPI realm enforces Keycloak's built-in `fapi-2-dpop-security-profile` client profile on every client; the
+suite uses Keycloak's userinfo endpoint as the FAPI resource endpoint.
 
 Each specification has its own package. Infrastructure the packages share, i.e. the conformance suite containers,
 the suite API client and the scripted browser interactions, lives in the test framework's `conformance-runner`
@@ -45,18 +49,24 @@ Modules are grouped by the browser interaction and the result they are expected 
 a module may be expected to finish with `REVIEW` (Keycloak's error page or a second login is snapshotted for a
 human reviewer), `SKIPPED` or `WARNING`; the reasons are documented next to the module lists.
 
-Keycloak always adds the `typ` claim to the ID token, and puts the claims of a requested scope, e.g. `email`, in it
-even when an access token is issued for the userinfo endpoint. The suite warns about both, and no realm setting
-changes them, so this module packages a script based protocol mapper (`src/main/resources`, with the `scripts`
-feature enabled by `ConformanceServerConfig`) that the OpenID Connect clients use: `oidc-id-token-claims.js` removes
-`typ` and, unless the response type is `id_token`, the email claims. As Keycloak rejects an `id_token_hint` without
-`typ`, the OpenID Connect logout realms do not use it. The OpenID Connect tests also disable the CSS processing of the
-suite's browser (`browsercontrol_css_enable`), where most of their time used to go.
+Keycloak always adds the `typ` claim, and in FAPI also the `sid` claim, to the ID token, and puts the claims of a
+requested scope, e.g. `email`, in it even when an access token is issued for the userinfo endpoint. The suite warns
+about both, and no realm setting changes them, so this module packages script based protocol mappers
+(`src/main/resources`, with the `scripts` feature enabled by `ConformanceServerConfig`) that the OpenID Connect and
+FAPI 2.0 clients use: `oidc-id-token-claims.js` removes `typ` and, unless the response type is `id_token`, the email
+claims, and `fapi-id-token-claims.js` removes `typ`, `sid` and the email claims the suite does not request. As Keycloak rejects an `id_token_hint` without `typ`,
+the OpenID Connect logout realms do not use them. The OpenID Connect and FAPI 2.0 tests also disable the CSS
+processing of the suite's browser (`browsercontrol_css_enable`), where most of their time used to go.
 
 Known gaps, mostly of Keycloak:
 
 - The session check of the Session Management plan does not complete, as Keycloak's `check_session_iframe` does not
   answer in the suite's HtmlUnit browser, so that module is disabled (`OidcSessionManagementRpInitiatedLogoutTest`).
+- Keycloak does not send the `Date` header the suite requires on resource endpoint responses, and its userinfo
+  endpoint accepts DPoP proofs signed with RS256. The FAPI modules that call the resource endpoint are therefore
+  expected to finish with `FAILED`, but only on these known conditions (see `AbstractFapi2ConformanceTest`), so any
+  other failure still fails the test. The optional reverse proxy (see [Running the tests](#running-the-tests)) adds
+  the missing header.
 
 ## Prerequisites
 
@@ -76,6 +86,7 @@ Run one suite (mirrors how CI runs them, one matrix job each):
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VciNonHaipTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VciHaipTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=Oid4VpTestSuite
+./mvnw package -f tests/conformance/pom.xml -Dtest=Fapi2SecurityProfileTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcTestSuite
 ./mvnw package -f tests/conformance/pom.xml -Dtest=OidcLogoutTestSuite
 ```
@@ -93,6 +104,25 @@ Run a single test class (fully qualified name; useful when iterating):
 ./mvnw test -f tests/conformance/pom.xml \
   -Dtest='org.keycloak.tests.conformance.vci.nonhaip.issuer.IssuerHappyFlowTest'
 ```
+
+### Optional reverse proxy in front of Keycloak
+
+FAPI requires resource server responses to carry the `Date` and `x-fapi-interaction-id` headers, which Keycloak's
+userinfo endpoint, used as the resource endpoint, does not send. A deployment would typically have an API gateway or
+the resource server itself provide them. To run the OpenID provider tests the way such a deployment works, enable the
+reverse proxy of the conformance runner (`KeycloakProxy`) with the `kc.test.conformance.proxy` option, as a system
+property, the `KC_TEST_CONFORMANCE_PROXY` environment variable or in `keycloak-test.properties`:
+
+```bash
+./mvnw package -f tests/conformance/pom.xml -Dtest=Fapi2SecurityProfileTestSuite -Dkc.test.conformance.proxy=true
+```
+
+The proxy, an nginx container on the suite's network, forwards every request to Keycloak, which still processes it,
+and adds the two headers. The suite then reaches Keycloak at `https://keycloak-proxy:8443`, which the tests set as the
+Keycloak `hostname`.
+The modules expected to fail only because of the missing headers are then expected to pass; those failing on
+Keycloak's own behaviour, e.g. accepting DPoP proofs signed with RS256, still fail. The proxy is disabled by default,
+so the tests exercise Keycloak as is; the OID4VCI and OID4VP tests do not use it.
 
 The first run pulls the conformance suite container images, so allow extra time. Full logs for a failed conformance
 module are printed to the test output to aid debugging.

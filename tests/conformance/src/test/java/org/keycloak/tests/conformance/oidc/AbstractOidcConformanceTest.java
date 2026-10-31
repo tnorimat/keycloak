@@ -64,6 +64,6 @@ public abstract class AbstractOidcConformanceTest extends AbstractConformanceTes
 
     @Override
     protected JsonNode suiteConfig(ConformanceModuleVariant module) {
-        return OidcSuiteConfig.create(OpenIdConformanceServer.KEYCLOAK_BASE_URI, module.browserInteraction()).toJson();
+        return OidcSuiteConfig.create(OpenIdConformanceServer.keycloakBaseUri(), module.browserInteraction()).toJson();
     }
 }

@@ -18,6 +18,8 @@
 package org.keycloak.testframework.conformance.runner;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -36,6 +38,17 @@ public record ConformanceModuleResult(
 
     public boolean finishedWith(ConformanceResult expectedResult) {
         return "FINISHED".equals(status) && expectedResult.name().equals(result);
+    }
+
+    // The suite conditions (log entry sources) that failed during the run
+    public Set<String> failedConditions() {
+        if (logs == null || !logs.isArray()) {
+            return Set.of();
+        }
+        return StreamSupport.stream(logs.spliterator(), false)
+                .filter(log -> "FAILURE".equals(log.path("result").asText()))
+                .map(log -> log.path("src").asText())
+                .collect(Collectors.toCollection(TreeSet::new));
     }
 
     public String failureSummary() {

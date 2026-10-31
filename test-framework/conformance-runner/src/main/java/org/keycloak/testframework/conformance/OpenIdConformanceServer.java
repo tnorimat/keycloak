@@ -54,6 +54,15 @@ public final class OpenIdConformanceServer implements AutoCloseable {
     // The URL at which the suite containers reach Keycloak, which must be set as the Keycloak 'hostname' option
     public static final URI KEYCLOAK_BASE_URI = URI.create("https://host.testcontainers.internal:8443");
 
+    /**
+     * The URL at which the suite reaches Keycloak, which must be set as the Keycloak 'hostname' option, for tests
+     * supporting the optional {@link KeycloakProxy}: the proxy's address when it is enabled, otherwise
+     * {@link #KEYCLOAK_BASE_URI}.
+     */
+    public static URI keycloakBaseUri() {
+        return KeycloakProxy.enabled() ? KeycloakProxy.BASE_URI : KEYCLOAK_BASE_URI;
+    }
+
     private static final String NGINX_CERTIFICATE_PATH = "/etc/ssl/certs/nginx-selfsigned.crt";
 
     private static OpenIdConformanceServer instance;
@@ -65,6 +74,7 @@ public final class OpenIdConformanceServer implements AutoCloseable {
     private final ConformanceApiClient client;
     private final URI baseUri;
     private final X509Certificate nginxCertificate;
+    private KeycloakProxy proxy;
 
     private OpenIdConformanceServer(Network network, GenericContainer<?> mongo, GenericContainer<?> server,
                                     GenericContainer<?> nginx, URI baseUri, SSLContext sslContext, X509Certificate nginxCertificate) {
@@ -137,6 +147,9 @@ public final class OpenIdConformanceServer implements AutoCloseable {
             OpenIdConformanceServer suite =
                     new OpenIdConformanceServer(network, mongo, server, nginx, baseUri, sslContext, nginxCertificate);
             suite.client().waitUntilAvailable(Duration.ofMinutes(4));
+            if (KeycloakProxy.enabled()) {
+                suite.proxy = KeycloakProxy.start(network);
+            }
             return suite;
         } catch (RuntimeException e) {
             List.of(nginx, server, mongo).forEach(GenericContainer::stop);
@@ -178,6 +191,9 @@ public final class OpenIdConformanceServer implements AutoCloseable {
 
     @Override
     public void close() {
+        if (proxy != null) {
+            proxy.close();
+        }
         List.of(nginx, server, mongo).forEach(GenericContainer::stop);
         network.close();
         synchronized (OpenIdConformanceServer.class) {

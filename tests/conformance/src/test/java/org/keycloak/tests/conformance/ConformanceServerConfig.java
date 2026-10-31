@@ -32,8 +32,9 @@ import org.keycloak.testframework.server.KeycloakServerConfig;
 import org.keycloak.testframework.server.KeycloakServerConfigBuilder;
 
 /**
- * Keycloak server configuration for the OpenID provider conformance tests (OpenID Connect, OpenID Connect logout).
- * They share it so the server is not restarted between them; the settings one plan needs do not affect the others:
+ * Keycloak server configuration for the OpenID provider conformance tests (OpenID Connect, OpenID Connect logout,
+ * FAPI 2.0). They share it so the server is not restarted between them; the settings one plan needs do not affect the
+ * others:
  * <ul>
  * <li>the BCP195 TLS restriction FAPI requires</li>
  * <li>trust in the suite's TLS certificate for the requests Keycloak sends to the suite, e.g. back-channel logout.
@@ -56,7 +57,7 @@ public class ConformanceServerConfig implements KeycloakServerConfig {
                 .dependencyCurrentProject()
                 .option("https-protocols", ConformanceTls.PROTOCOLS)
                 .option("https-cipher-suites", ConformanceTls.BCP195_CIPHERS)
-                .option("hostname", OpenIdConformanceServer.KEYCLOAK_BASE_URI.toString())
+                .option("hostname", OpenIdConformanceServer.keycloakBaseUri().toString())
                 .option("truststore-paths", truststore().toString())
                 .option("tls-hostname-verifier", "ANY");
     }
