@@ -94,6 +94,13 @@ public class ParRequest extends AbstractHttpPostRequest<ParRequest, ParResponse>
         return this;
     }
 
+    public ParRequest resources(String... resources) {
+        for (String resource : resources) {
+            parameter(OAuth2Constants.RESOURCE, resource);
+        }
+        return this;
+    }
+
     @Override
     protected void initRequest() {
         parameter(OAuth2Constants.RESPONSE_TYPE, client.config().getResponseType());

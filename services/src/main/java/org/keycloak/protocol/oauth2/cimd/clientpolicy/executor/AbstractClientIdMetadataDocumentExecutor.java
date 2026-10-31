@@ -918,22 +918,23 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
      *
      * @param preAuthorizationRequestContext an authorization request
      * @param clientModel the client looked up, created, or updated by CIMD for this authorization request, not {@code null}
-     * @throws ClientPolicyException when the {@code resource} parameter value is not allowed.
+     * @throws ClientPolicyException when any of the {@code resource} parameter values is not allowed.
      */
     protected void enforceResourceIndicator(PreAuthorizationRequestContext preAuthorizationRequestContext, ClientModel clientModel) throws ClientPolicyException {
         if (!Profile.isFeatureEnabled(Profile.Feature.RESOURCE_INDICATORS)) {
             return;
         }
 
-        String resource = preAuthorizationRequestContext.getRequestParameters().getFirst(OAuth2Constants.RESOURCE);
-        if (resource == null) {
+        List<String> resources = preAuthorizationRequestContext.getRequestParameters().get(OAuth2Constants.RESOURCE);
+        if (resources == null || resources.isEmpty()) {
             // permissive mode: the executor does not require the resource parameter.
             return;
         }
 
         List<String> allowList = convertContentFilledList(getConfiguration().getResourceIndicatorAllowList());
-        if (!allowList.contains(resource)) {
-            // no longer (or never) allow-listed: remove its audience mapper to keep it synchronized, then reject.
+        List<String> notAllowed = resources.stream().filter(resource -> !allowList.contains(resource)).distinct().toList();
+        if (!notAllowed.isEmpty()) {
+            // no longer (or never) allow-listed: remove their audience mappers to keep them synchronized, then reject.
             // this is persisted in a separate transaction so the change survives the rollback that happens
             // when the ClientPolicyException below is thrown.
             String realmId = clientModel.getRealm().getId();
@@ -942,15 +943,15 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
                 RealmModel newRealm = newSession.realms().getRealm(realmId);
                 ClientModel newClientModel = newRealm == null ? null : newRealm.getClientById(clientId);
                 if (newClientModel != null) {
-                    removeResourceIndicatorAudienceMapper(newClientModel, resource);
+                    notAllowed.forEach(resource -> removeResourceIndicatorAudienceMapper(newClientModel, resource));
                 }
             });
-            getLogger().warnv("resource parameter not allowed: resource = {0}", resource);
+            getLogger().warnv("resource parameter not allowed: resource = {0}", notAllowed);
             throw invalidResourceIndicator();
         }
 
-        // allow-listed: attach an audience mapper for the resource so ResourceIndicatorsPostProcessor can resolve it.
-        ensureResourceIndicatorAudienceMapper(clientModel, resource);
+        // allow-listed: attach an audience mapper for each resource so ResourceIndicatorsPostProcessor can resolve it.
+        resources.stream().distinct().forEach(resource -> ensureResourceIndicatorAudienceMapper(clientModel, resource));
     }
 
     private ProtocolMapperModel findResourceIndicatorAudienceMapper(ClientModel clientModel, String resource) {

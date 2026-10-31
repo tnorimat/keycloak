@@ -49,6 +49,7 @@ import org.keycloak.protocol.oidc.endpoints.request.AuthorizationEndpointRequest
 import org.keycloak.protocol.oidc.par.ParResponse;
 import org.keycloak.protocol.oidc.par.clientpolicy.context.PushedAuthorizationRequestContext;
 import org.keycloak.protocol.oidc.par.endpoints.request.ParEndpointRequestParserProcessor;
+import org.keycloak.protocol.oidc.resourceindicators.ResourceIndicatorUtils;
 import org.keycloak.protocol.oidc.utils.ContentTypeValidationUtil;
 import org.keycloak.representations.dpop.DPoP;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
@@ -162,6 +163,7 @@ public class ParEndpoint extends AbstractParEndpoint {
         try {
             checker.checkInvalidRequestMessage();
             checker.checkOIDCRequest();
+            checker.checkValidResource();
             checker.checkOIDCParams();
             checker.checkPKCEParams();
             checker.checkParDPoPParams();
@@ -177,6 +179,12 @@ public class ParEndpoint extends AbstractParEndpoint {
         int expiresIn = realm.getParPolicy().getRequestUriLifespan();
 
         flattenDecodedFormParametersToParamsMap(decodedFormParameters, params);
+
+        List<String> resources = decodedFormParameters.get(OIDCLoginProtocol.RESOURCE_PARAM);
+        if (resources != null && resources.size() > 1 && Profile.isFeatureEnabled(Profile.Feature.RESOURCE_INDICATORS)) {
+            // multiple resource parameters (RFC 8707) were validated by the checker above, so they cannot contain spaces
+            params.put(OIDCLoginProtocol.RESOURCE_PARAM, ResourceIndicatorUtils.join(resources));
+        }
 
         params.put(PAR_CREATED_TIME, String.valueOf(Time.currentTimeMillis()));
         // Store the client_id so the authorization endpoint can verify the PAR was issued for that client

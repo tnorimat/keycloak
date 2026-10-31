@@ -19,6 +19,7 @@
 package org.keycloak.protocol.oidc.par.endpoints.request;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -31,6 +32,7 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.endpoints.request.AuthorizationEndpointRequest;
 import org.keycloak.protocol.oidc.endpoints.request.AuthzEndpointRequestParser;
 import org.keycloak.protocol.oidc.par.endpoints.ParEndpoint;
+import org.keycloak.protocol.oidc.resourceindicators.ResourceIndicatorUtils;
 
 import org.jboss.logging.Logger;
 
@@ -97,6 +99,15 @@ public class AuthzEndpointParParser extends AuthzEndpointRequestParser {
     @Override
     protected String getParameter(String paramName) {
         return requestParams.get(paramName);
+    }
+
+    @Override
+    protected List<String> getParameterValues(String paramName) {
+        if (OIDCLoginProtocol.RESOURCE_PARAM.equals(paramName)) {
+            // multiple resource parameters are stored space-delimited by the PAR endpoint
+            return ResourceIndicatorUtils.split(requestParams.get(paramName));
+        }
+        return super.getParameterValues(paramName);
     }
 
     @Override

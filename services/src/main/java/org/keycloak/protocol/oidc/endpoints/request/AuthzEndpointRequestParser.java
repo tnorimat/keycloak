@@ -17,7 +17,9 @@
 
 package org.keycloak.protocol.oidc.endpoints.request;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
+import org.keycloak.common.Profile;
 import org.keycloak.constants.AdapterConstants;
 import org.keycloak.models.Constants;
 import org.keycloak.models.KeycloakSession;
@@ -134,7 +137,10 @@ public abstract class AuthzEndpointRequestParser {
         request.redirectUri = replaceIfNotNull(request.redirectUri, getAndValidateParameter(OIDCLoginProtocol.REDIRECT_URI_PARAM));
         request.state = replaceIfNotNull(request.state, getAndValidateParameter(OIDCLoginProtocol.STATE_PARAM));
         request.scope = replaceIfNotNull(request.scope, getAndValidateParameter(OIDCLoginProtocol.SCOPE_PARAM));
-        request.resource = replaceIfNotNull(request.resource, getAndValidateParameter(OIDCLoginProtocol.RESOURCE_PARAM));
+        List<String> resources = getAndValidateParameterValues(OIDCLoginProtocol.RESOURCE_PARAM);
+        if (!resources.isEmpty()) {
+            request.resources = resources;
+        }
         request.loginHint = replaceIfNotNull(request.loginHint, getAndValidateParameter(OIDCLoginProtocol.LOGIN_HINT_PARAM));
         request.prompt = replaceIfNotNull(request.prompt, getAndValidateParameter(OIDCLoginProtocol.PROMPT_PARAM));
         request.idpHint = replaceIfNotNull(request.idpHint, getAndValidateParameter(AdapterConstants.KC_IDP_HINT));
@@ -228,8 +234,26 @@ public abstract class AuthzEndpointRequestParser {
     }
 
     protected String getAndValidateParameter(String paramName) {
-        String paramValue = getParameter(paramName);
+        return validateParameterValue(paramName, getParameter(paramName));
+    }
 
+    protected List<String> getAndValidateParameterValues(String paramName) {
+        if (!Profile.isFeatureEnabled(Profile.Feature.RESOURCE_INDICATORS)) {
+            String value = getAndValidateParameter(paramName);
+            return value == null ? List.of() : List.of(value);
+        }
+
+        List<String> values = new ArrayList<>();
+        for (String value : getParameterValues(paramName)) {
+            String validated = validateParameterValue(paramName, value);
+            if (validated != null) {
+                values.add(validated);
+            }
+        }
+        return values;
+    }
+
+    private String validateParameterValue(String paramName, String paramValue) {
         if (paramValue != null) {
             paramValue = StringUtil.removeControlCharacters(paramValue);
             int maxLength = config.getMaxLengthForTheParameter(paramName, false);
@@ -247,6 +271,15 @@ public abstract class AuthzEndpointRequestParser {
     }
 
     protected abstract String getParameter(String paramName);
+
+    /**
+     * Returns all values of a parameter which is allowed to be sent multiple times (for example {@code resource}).
+     * By default, it returns the single value of {@link #getParameter(String)}.
+     */
+    protected List<String> getParameterValues(String paramName) {
+        String value = getParameter(paramName);
+        return value == null ? List.of() : List.of(value);
+    }
 
     protected abstract Integer getIntParameter(String paramName);
 

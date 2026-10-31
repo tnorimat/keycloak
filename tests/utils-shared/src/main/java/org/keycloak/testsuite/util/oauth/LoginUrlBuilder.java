@@ -36,6 +36,11 @@ public class LoginUrlBuilder extends AbstractUrlBuilder {
         return this;
     }
 
+    public LoginUrlBuilder resources(String... resources) {
+        parameterValues(OAuth2Constants.RESOURCE, resources);
+        return this;
+    }
+
     public LoginUrlBuilder authorizationDetails(AuthorizationDetailsJSONRepresentation authDetail) {
         parameter(OAuth2Constants.AUTHORIZATION_DETAILS, authDetail != null ? List.of(authDetail) : List.of());
         return this;

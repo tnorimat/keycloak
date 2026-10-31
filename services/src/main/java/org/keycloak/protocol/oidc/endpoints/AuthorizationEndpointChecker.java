@@ -305,12 +305,14 @@ public class AuthorizationEndpointChecker {
     }
 
     public void checkValidResource() throws AuthorizationCheckException {
-        if (!ResourceIndicatorValidation.isValidResourceIndicator(request.getResource())) {
-            ServicesLogger.LOGGER.invalidParameter(OIDCLoginProtocol.SCOPE_PARAM);
-            String errorMessage = "Invalid resource: " + request.getResource();
-            event.detail(Details.REASON, errorMessage);
-            event.error(Errors.INVALID_REQUEST);
-            throw new AuthorizationCheckException(Response.Status.BAD_REQUEST, OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_INVALID_RESOURCE);
+        for (String resource : request.getResources()) {
+            if (!ResourceIndicatorValidation.isValidResourceIndicator(resource)) {
+                ServicesLogger.LOGGER.invalidParameter(OIDCLoginProtocol.RESOURCE_PARAM);
+                String errorMessage = "Invalid resource: " + resource;
+                event.detail(Details.REASON, errorMessage);
+                event.error(Errors.INVALID_REQUEST);
+                throw new AuthorizationCheckException(Response.Status.BAD_REQUEST, OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_INVALID_RESOURCE);
+            }
         }
     }
 

@@ -154,7 +154,7 @@ public abstract class AbstractRefreshTokenProvider implements RefreshTokenProvid
             newToken.setAuthorization(oldRefreshToken.getAuthorization());
         }
 
-        validation.clientSessionCtx.setAttribute(OAuth2Constants.RESOURCE, ctx.resourceParameter());
+        validation.clientSessionCtx.setAttribute(OAuth2Constants.RESOURCE, ctx.resourceParameters());
 
         TokenManager.AccessTokenResponseBuilder responseBuilder = tokenManager.responseBuilder(realm, authorizedClient, event, session,
                 validation.userSession, validation.clientSessionCtx).offlineToken( TokenUtil.TOKEN_TYPE_OFFLINE.equals(oldRefreshToken.getType())).accessToken(newToken);

@@ -16,7 +16,9 @@
  */
 package org.keycloak.protocol.oidc.endpoints.request;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -66,6 +68,17 @@ public class AuthzEndpointRequestObjectParser extends AuthzEndpointRequestParser
         } else {
             return val.toString();
         }
+    }
+
+    @Override
+    protected List<String> getParameterValues(String paramName) {
+        JsonNode val = this.requestParams.get(paramName);
+        if (val != null && val.isArray()) {
+            List<String> values = new ArrayList<>();
+            val.forEach(element -> values.add(element.isValueNode() ? element.asText() : element.toString()));
+            return values;
+        }
+        return super.getParameterValues(paramName);
     }
 
     @Override

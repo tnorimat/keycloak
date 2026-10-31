@@ -1,5 +1,9 @@
 package org.keycloak.protocol.oidc.resourceindicators;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.keycloak.OAuth2Constants;
 import org.keycloak.OAuthErrorException;
 import org.keycloak.models.ClientModel;
@@ -19,58 +23,81 @@ public class ResourceIndicatorsPostProcessor implements TokenPostProcessor {
 
     @Override
     public void process(TokenPostProcessorContext context) {
-        String requestedResource = context.clientSessionCtx().getAttribute(OAuth2Constants.RESOURCE, String.class);
-        if (requestedResource != null && !ResourceIndicatorValidation.isValidResourceIndicator(requestedResource)) {
-            throw new TokenInterceptorException(OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_INVALID_RESOURCE);
+        List<String> requestedResources = getRequestedResources(context);
+        for (String requestedResource : requestedResources) {
+            if (!ResourceIndicatorValidation.isValidResourceIndicator(requestedResource)) {
+                throw new TokenInterceptorException(OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_INVALID_RESOURCE);
+            }
         }
 
         String grantType = context.clientSessionCtx().getAttribute(Constants.GRANT_TYPE, String.class);
 
-        boolean originalResourceParamRequired = false;
-        String originalResourceParam = null;
+        boolean originalResourcesRequired = false;
+        List<String> originalResources = List.of();
         if (OAuth2Constants.AUTHORIZATION_CODE.equals(grantType)) {
-            originalResourceParam = context.code().getResource();
-            originalResourceParamRequired = true;
+            originalResources = ResourceIndicatorUtils.split(context.code().getResource());
+            originalResourcesRequired = true;
         } else if (OAuth2Constants.REFRESH_TOKEN.equals(grantType)) {
-            originalResourceParam = (String) context.requestRefreshToken().getOtherClaims().get(OAuth2Constants.RESOURCE);
-            originalResourceParamRequired = true;
+            originalResources = ResourceIndicatorUtils.fromClaim(context.requestRefreshToken().getOtherClaims().get(OAuth2Constants.RESOURCE));
+            originalResourcesRequired = true;
         }
 
-        if (originalResourceParam == null && requestedResource == null) {
+        if (originalResources.isEmpty() && requestedResources.isEmpty()) {
             return;
         }
 
-        if (originalResourceParamRequired) {
-            if (originalResourceParam == null) {
+        // Resources the grant is bound to. A refresh token keeps all of them so that the client can later
+        // request an access token for any of them (RFC 8707 Section 2.2).
+        List<String> grantedResources = requestedResources;
+        if (originalResourcesRequired) {
+            if (originalResources.isEmpty()) {
                 throw new TokenInterceptorException(OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_NOT_MATCHING);
             }
 
-            if (requestedResource == null) {
-                requestedResource = originalResourceParam;
-            } else if (!requestedResource.equals(originalResourceParam)){
+            if (requestedResources.isEmpty()) {
+                requestedResources = originalResources;
+            } else if (!originalResources.containsAll(requestedResources)) {
                 throw new TokenInterceptorException(OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_NOT_MATCHING);
             }
+            grantedResources = originalResources;
         }
 
-        String audienceToSet = null;
         String[] audience = context.accessToken().getAudience();
-        if (audience != null && isClientUrn(requestedResource)) {
-            audienceToSet = findAudienceByClientUrn(requestedResource, audience);
-        } else if (audience != null) {
-            audienceToSet = findCustomAudience(requestedResource, audience);
-            if (audienceToSet == null) {
-                audienceToSet = findAudienceByClientAttribute(requestedResource, audience);
+        Set<String> audienceToSet = new LinkedHashSet<>();
+        for (String requestedResource : requestedResources) {
+            String resolvedAudience = resolveAudience(requestedResource, audience);
+            if (resolvedAudience == null) {
+                throw new TokenInterceptorException(OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_INVALID_RESOURCE);
             }
-        }
-
-        if (audienceToSet == null) {
-            throw new TokenInterceptorException(OAuthErrorException.INVALID_TARGET, ResourceIndicatorConstants.ERROR_INVALID_RESOURCE);
+            audienceToSet.add(resolvedAudience);
         }
 
         if (context.refreshToken() != null) {
-            context.refreshToken().getOtherClaims().put(OAuth2Constants.RESOURCE, requestedResource);
+            context.refreshToken().getOtherClaims().put(OAuth2Constants.RESOURCE, ResourceIndicatorUtils.toClaim(grantedResources));
         }
-        context.accessToken().audience(audienceToSet);
+        context.accessToken().audience(audienceToSet.toArray(String[]::new));
+    }
+
+    private List<String> getRequestedResources(TokenPostProcessorContext context) {
+        List<?> requested = context.clientSessionCtx().getAttribute(OAuth2Constants.RESOURCE, List.class);
+        if (requested == null || requested.isEmpty()) {
+            return List.of();
+        }
+        return requested.stream().map(String::valueOf).distinct().toList();
+    }
+
+    private String resolveAudience(String requestedResource, String[] audience) {
+        if (audience == null) {
+            return null;
+        }
+        if (isClientUrn(requestedResource)) {
+            return findAudienceByClientUrn(requestedResource, audience);
+        }
+        String audienceToSet = findCustomAudience(requestedResource, audience);
+        if (audienceToSet == null) {
+            audienceToSet = findAudienceByClientAttribute(requestedResource, audience);
+        }
+        return audienceToSet;
     }
 
     private boolean isClientUrn(String resource) {

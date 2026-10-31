@@ -33,6 +33,7 @@ import org.keycloak.testframework.server.KeycloakServerConfigBuilder;
 import org.keycloak.testsuite.util.oauth.AccessTokenResponse;
 import org.keycloak.testsuite.util.oauth.AuthorizationEndpointResponse;
 import org.keycloak.testsuite.util.oauth.IntrospectionResponse;
+import org.keycloak.testsuite.util.oauth.ParResponse;
 
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -254,6 +255,117 @@ public class ResourceIndicatorsTest {
         Assertions.assertTrue(introspectionResponse.isSuccess());
         TokenMetadataRepresentation tokenMetadata = introspectionResponse.asTokenMetadata();
         MatcherAssert.assertThat(tokenMetadata.getAudience(), Matchers.hasItemInArray("https://custom-api"));
+    }
+
+    @Test
+    public void testMultipleResourcesPasswordGrant() {
+        AccessTokenResponse tokenResponse = oauth.passwordGrantRequest("user", "pass")
+                .resources("urn:client:theservice", "https://otherservice").send();
+        assertValidResponse(tokenResponse, "theservice", "https://otherservice");
+    }
+
+    @Test
+    public void testMultipleResourcesClientCredentials() {
+        AccessTokenResponse tokenResponse = oauth.clientCredentialsGrantRequest()
+                .resources("urn:client:test-app", "https://custom-api").send();
+        assertValidResponse(tokenResponse, "test-app", "https://custom-api");
+    }
+
+    @Test
+    public void testMultipleResourcesOneInvalid() {
+        AccessTokenResponse tokenResponse = oauth.passwordGrantRequest("user", "pass")
+                .resources("urn:client:theservice", "https://unknown").send();
+        assertErrorResponse(tokenResponse, INVALID_TARGET, ERROR_INVALID_RESOURCE);
+    }
+
+    @Test
+    public void testMultipleResourcesOneMalformed() {
+        AccessTokenResponse tokenResponse = oauth.passwordGrantRequest("user", "pass")
+                .resources("urn:client:theservice", "/malformed").send();
+        assertErrorResponse(tokenResponse, INVALID_TARGET, ERROR_INVALID_RESOURCE);
+    }
+
+    @Test
+    public void testAuthzMultipleResourcesNoResourceInTokenRequest() {
+        AuthorizationEndpointResponse authorizationEndpointResponse = oauth.loginForm()
+                .resources("urn:client:theservice", "https://otherservice").doLoginWithCookie();
+        Assertions.assertTrue(authorizationEndpointResponse.isRedirected());
+        Assertions.assertNull(authorizationEndpointResponse.getError());
+
+        AccessTokenResponse accessTokenResponse = oauth.accessTokenRequest(authorizationEndpointResponse.getCode()).send();
+        assertValidResponse(accessTokenResponse, "theservice", "https://otherservice");
+    }
+
+    @Test
+    public void testAuthzMultipleResourcesSubsetInTokenRequestAndRefresh() {
+        AuthorizationEndpointResponse authorizationEndpointResponse = oauth.loginForm()
+                .resources("urn:client:theservice", "https://otherservice", "https://custom-api").doLoginWithCookie();
+        Assertions.assertTrue(authorizationEndpointResponse.isRedirected());
+
+        AccessTokenResponse accessTokenResponse = oauth.accessTokenRequest(authorizationEndpointResponse.getCode())
+                .resource("urn:client:theservice").send();
+        assertValidResponse(accessTokenResponse, "theservice");
+
+        // the refresh token is still bound to all resources of the authorization request
+        AccessTokenResponse refreshResponse = oauth.refreshRequest(accessTokenResponse.getRefreshToken())
+                .resources("https://otherservice", "https://custom-api").send();
+        assertValidResponse(refreshResponse, "https://otherservice", "https://custom-api");
+
+        refreshResponse = oauth.refreshRequest(refreshResponse.getRefreshToken()).send();
+        assertValidResponse(refreshResponse, "theservice", "https://otherservice", "https://custom-api");
+    }
+
+    @Test
+    public void testAuthzMultipleResourcesNotMatchingInTokenRequest() {
+        AuthorizationEndpointResponse authorizationEndpointResponse = oauth.loginForm()
+                .resources("urn:client:theservice", "https://custom-api").doLoginWithCookie();
+        Assertions.assertTrue(authorizationEndpointResponse.isRedirected());
+
+        AccessTokenResponse accessTokenResponse = oauth.accessTokenRequest(authorizationEndpointResponse.getCode())
+                .resources("urn:client:theservice", "https://otherservice").send();
+        assertErrorResponse(accessTokenResponse, INVALID_TARGET, ERROR_NOT_MATCHING);
+    }
+
+    @Test
+    public void testRefreshWithMultipleResourcesNotMatching() {
+        AccessTokenResponse tokenResponse = oauth.passwordGrantRequest("user", "pass").resource("urn:client:theservice").send();
+        Assertions.assertTrue(tokenResponse.isSuccess());
+
+        AccessTokenResponse refreshResponse = oauth.refreshRequest(tokenResponse.getRefreshToken())
+                .resources("urn:client:theservice", "https://otherservice").send();
+        assertErrorResponse(refreshResponse, INVALID_TARGET, ERROR_NOT_MATCHING);
+    }
+
+    @Test
+    public void testAuthzMultipleResourcesOneMalformed() {
+        AuthorizationEndpointResponse authorizationEndpointResponse = oauth.loginForm()
+                .resources("urn:client:theservice", "/invalid").doLoginWithCookie();
+        Assertions.assertTrue(authorizationEndpointResponse.isRedirected());
+        Assertions.assertEquals(INVALID_TARGET, authorizationEndpointResponse.getError());
+        Assertions.assertEquals(ERROR_INVALID_RESOURCE, authorizationEndpointResponse.getErrorDescription());
+    }
+
+    @Test
+    public void testParMultipleResources() {
+        ParResponse parResponse = oauth.pushedAuthorizationRequest()
+                .resources("urn:client:theservice", "https://otherservice").send();
+        Assertions.assertEquals(201, parResponse.getStatusCode());
+
+        AuthorizationEndpointResponse authorizationEndpointResponse = oauth.loginForm()
+                .requestUri(parResponse.getRequestUri()).doLoginWithCookie();
+        Assertions.assertTrue(authorizationEndpointResponse.isRedirected());
+        Assertions.assertNull(authorizationEndpointResponse.getError());
+
+        AccessTokenResponse accessTokenResponse = oauth.accessTokenRequest(authorizationEndpointResponse.getCode()).send();
+        assertValidResponse(accessTokenResponse, "theservice", "https://otherservice");
+    }
+
+    @Test
+    public void testParMultipleResourcesOneMalformed() {
+        ParResponse parResponse = oauth.pushedAuthorizationRequest()
+                .resources("urn:client:theservice", "/invalid").send();
+        Assertions.assertEquals(400, parResponse.getStatusCode());
+        Assertions.assertEquals(INVALID_TARGET, parResponse.getError());
     }
 
     private static final class ResourceIndicatorsRealm implements RealmConfig {
