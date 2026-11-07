@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.keycloak.testframework.config.Config;
 import org.keycloak.testframework.conformance.OpenIdConformanceServer;
 import org.keycloak.testframework.conformance.annotations.InjectOpenIdConformanceServer;
 import org.keycloak.testframework.conformance.runner.BrowserInteraction;
@@ -50,6 +51,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 public abstract class AbstractConformanceTest {
 
     private static final Logger LOGGER = Logger.getLogger(AbstractConformanceTest.class);
+
+    /**
+     * How often a module not finishing as expected is run again before the test fails, as modules occasionally fail
+     * for reasons outside of Keycloak, e.g. network errors or the timing of the suite's waits. Set it with the
+     * {@value} test framework option (system property, {@code KC_TEST_CONFORMANCE_RETRIES} environment variable or
+     * keycloak-test.properties); 0 disables the retries.
+     */
+    public static final String RETRIES_PROPERTY = "kc.test.conformance.retries";
+
+    private static final int DEFAULT_RETRIES = 3;
 
     @InjectCertificates(config = TlsCertificates.class)
     protected ManagedCertificates certificates;
@@ -123,22 +134,57 @@ public abstract class AbstractConformanceTest {
     @ParameterizedTest
     @MethodSource("moduleVariants")
     public void conformance(ConformanceModuleVariant moduleVariant) {
-        ConformanceModuleResult result = server.client()
-                .run(moduleVariant, suiteConfig(moduleVariant), interaction(moduleVariant));
         ConformanceResult expectedResult = moduleVariant.expectedResult();
         Set<String> knownFailures = expectedResult == ConformanceResult.FAILED ? knownFailures(moduleVariant) : Set.of();
         if (expectedResult == ConformanceResult.FAILED && knownFailures.isEmpty()) {
             expectedResult = resultWithoutKnownFailures(moduleVariant);
         }
-        boolean unknownFailures = expectedResult == ConformanceResult.FAILED
-                && !knownFailures.containsAll(result.failedConditions());
-        if (!result.finishedWith(expectedResult) || unknownFailures) {
+
+        int attempts = 1 + Math.max(0, Config.get(RETRIES_PROPERTY, DEFAULT_RETRIES, Integer.class));
+        for (int attempt = 1; ; attempt++) {
+            // Each run creates a new plan, so an attempt does not depend on the previous one
+            ConformanceModuleResult result = server.client()
+                    .run(moduleVariant, suiteConfig(moduleVariant), interaction(moduleVariant));
+            String failure = failure(result, expectedResult, knownFailures);
+            if (failure == null) {
+                if (attempt > 1) {
+                    printRetryNotice("Conformance module " + result.module() + " " + moduleVariant.moduleVariant()
+                            + " finished as expected in attempt " + attempt + " of " + attempts);
+                }
+                return;
+            }
+            if (attempt < attempts) {
+                printRetryNotice("Attempt " + attempt + " of " + attempts + " of conformance module " + result.module()
+                        + " did not finish as expected, running it again:\n" + failure);
+                continue;
+            }
             // Formatted upfront, as the test framework log filter replays buffered records without their parameters
             LOGGER.error("Full logs of failed conformance module " + result.module() + ":\n" + result.logs().toPrettyString());
-            Assertions.fail(result.failureSummary()
-                    + (unknownFailures ? "\n  failed conditions " + result.failedConditions()
-                            + " beyond the known failures " + knownFailures : ""));
+            Assertions.fail((attempts > 1 ? "All " + attempts + " attempts failed, the last one with:\n" : "") + failure);
         }
+    }
+
+    /**
+     * Prints to the test output rather than logging, as the test framework log filter drops the logs of a test that
+     * passes, which would hide that a module passed only when run again.
+     */
+    private static void printRetryNotice(String message) {
+        System.out.println("[conformance retry] " + message);
+    }
+
+    /**
+     * Why the module did not finish as expected, or {@code null} if it did.
+     */
+    private static String failure(ConformanceModuleResult result, ConformanceResult expectedResult,
+            Set<String> knownFailures) {
+        boolean unknownFailures = expectedResult == ConformanceResult.FAILED
+                && !knownFailures.containsAll(result.failedConditions());
+        if (result.finishedWith(expectedResult) && !unknownFailures) {
+            return null;
+        }
+        return result.failureSummary()
+                + (unknownFailures ? "\n  failed conditions " + result.failedConditions()
+                        + " beyond the known failures " + knownFailures : "");
     }
 
     public static class TlsCertificates implements CertificatesConfig {

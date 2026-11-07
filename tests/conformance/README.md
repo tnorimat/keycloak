@@ -152,3 +152,18 @@ so the tests exercise Keycloak as is; the OID4VCI and OID4VP tests do not use it
 
 The first run pulls the conformance suite container images, so allow extra time. Full logs for a failed conformance
 module are printed to the test output to aid debugging.
+
+### Retries
+
+Modules occasionally fail for reasons outside of Keycloak, e.g. network errors or the timing of the suite's waits, so
+a module that does not finish with its expected result is run again, in a new plan, up to 3 times. Only if all
+attempts fail does the test fail, with the result of the last attempt. Every retry is printed to the test output,
+prefixed with `[conformance retry]`, also when a later attempt passes, so modules that pass only when run again stay
+visible.
+Set the number of retries with the `kc.test.conformance.retries` option (system property,
+`KC_TEST_CONFORMANCE_RETRIES` environment variable or `keycloak-test.properties`), e.g. `0` to see every failure while
+iterating:
+
+```bash
+./mvnw package -f tests/conformance/pom.xml -Dtest=OidcTestSuite -Dkc.test.conformance.retries=0
+```
